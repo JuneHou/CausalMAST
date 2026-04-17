@@ -1,0 +1,48 @@
+ ```json
+{
+    "errors": [
+        {
+            "category": "1.2 Disobey Role Specification",
+            "location": "step_01",
+            "evidence": "Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are: Agent_Code_Executor: I am Agent Code Executor, specializing in solving problems by writing Python code. I have the ability to execute Python code, so feel free to reach out whenever you need assistance with Python programming. Agent_Problem_Solver: I am Agent Problem Solver, and I work collaboratively with other agents to tackle various challenges. Agent_Verifier: I am Agent Verifier. Please call on me when both Agent Code Executor and Agent Problem Solver have submitted their solutions, so I can verify their proposals and provide a final synthesis.",
+            "description": "The assistant is describing the roles of the agents, which is not its role. The assistant should not be describing the roles of the agents; it should be facilitating the task.",
+            "impact": "MEDIUM"
+        },
+        {
+            "category": "1.2 Disobey Role Specification",
+            "location": "step_02",
+            "evidence": "SUGGESTED NEXT SPEAKER: Agent_Code_Executor.",
+            "description": "The assistant is suggesting the next speaker, which is not its role. The assistant should be facilitating the task and not deciding the order of speakers.",
+            "impact": "MEDIUM"
+        },
+        {
+            "category": "1.2 Disobey Role Specification",
+            "location": "step_05",
+            "evidence": "Now that I have received solutions from both Agent Code Executor and Agent Problem Solver, I will proceed to evaluate their proposals.",
+            "description": "The assistant is evaluating the proposals, which is the role of Agent_Verifier. The assistant should not be evaluating the proposals; it should be facilitating the task.",
+            "impact": "HIGH"
+        },
+        {
+            "category": "2.1 Conversation Reset",
+            "location": "step_01",
+            "evidence": "Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are: Agent_Code_Executor: I am Agent Code Executor, specializing in solving problems by writing Python code. I have the ability to execute Python code, so feel free to reach out whenever you need assistance with Python programming. Agent_Problem_Solver: I am Agent Problem Solver, and I work collaboratively with other agents to tackle various challenges. Agent_Verifier: I am Agent Verifier. Please call on me when both Agent Code Executor and Agent Problem Solver have submitted their solutions, so I can verify their proposals and provide a final synthesis.",
+            "description": "The assistant is resetting the conversation by introducing the agents and their roles, which loses prior context and progress.",
+            "impact": "HIGH"
+        },
+        {
+            "category": "2.4 Information Withholding",
+            "location": "step_05",
+            "evidence": "Now that I have received solutions from both Agent Code Executor and Agent Problem Solver, I will proceed to evaluate their proposals.",
+            "description": "The assistant is evaluating the proposals without involving Agent_Verifier, who is supposed to verify the proposals. This withholds information needed by Agent_Verifier.",
+            "impact": "HIGH"
+        },
+        {
+            "category": "3.3 No or Incorrect Verification",
+            "location": "step_05",
+            "evidence": "Given this evaluation, I am confident in finalizing the solution.",
+            "description": "The assistant is finalizing the solution without proper verification by Agent_Verifier. This skips the verification step entirely.",
+            "impact": "HIGH"
+        }
+    ]
+}
+```

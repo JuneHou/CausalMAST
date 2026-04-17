@@ -1,0 +1,41 @@
+ ```json
+{
+    "errors": [
+        {
+            "category": "1.2 Disobey Role Specification",
+            "location": "step_01",
+            "evidence": "Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are:",
+            "description": "The assistant is introducing the agents and their roles, which is not part of the task specification. The assistant should focus on the task at hand.",
+            "impact": "MEDIUM"
+        },
+        {
+            "category": "1.5 Unaware of Termination Conditions",
+            "location": "step_05",
+            "evidence": "Now that I have received the solutions from both Agent Code Executor and Agent Problem Solver, I can evaluate the proposals step by step.",
+            "description": "The assistant continues past a valid stopping point. The task was to determine which attacks TLS protects against, which was already answered in step_04.",
+            "impact": "HIGH"
+        },
+        {
+            "category": "2.1 Conversation Reset",
+            "location": "step_01",
+            "evidence": "Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are:",
+            "description": "The assistant resets the conversation by introducing the agents and their roles, losing prior context and progress.",
+            "impact": "HIGH"
+        },
+        {
+            "category": "2.3 Task Derailment",
+            "location": "step_01",
+            "evidence": "Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are:",
+            "description": "The assistant shifts focus away from the intended objective of determining which attacks TLS protects against.",
+            "impact": "MEDIUM"
+        },
+        {
+            "category": "3.1 Premature Termination",
+            "location": "step_04",
+            "evidence": "exitcode: 0 (execution succeeded) Code output: (True, True)",
+            "description": "The assistant stops before the task is complete or a required output is produced. The final answer should be provided in the format specified in the task.",
+            "impact": "HIGH"
+        }
+    ]
+}
+```

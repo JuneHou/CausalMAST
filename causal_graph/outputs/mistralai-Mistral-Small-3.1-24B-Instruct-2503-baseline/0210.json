@@ -1,0 +1,48 @@
+ ```json
+{
+    "errors": [
+        {
+            "category": "1.2 Disobey Role Specification",
+            "location": "step_01",
+            "evidence": "Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are:",
+            "description": "The assistant introduces the agents and their roles, which is not part of the task specification. The assistant should focus on solving the problem.",
+            "impact": "MEDIUM"
+        },
+        {
+            "category": "1.5 Unaware of Termination Conditions",
+            "location": "step_02",
+            "evidence": "Now, let's discuss this with the other agents.",
+            "description": "The assistant continues the conversation past the point where the task should have been completed. The task was to determine the correct answer, which was already done.",
+            "impact": "MEDIUM"
+        },
+        {
+            "category": "2.1 Conversation Reset",
+            "location": "step_02",
+            "evidence": "Now, let's discuss this with the other agents.",
+            "description": "The assistant resets the conversation by introducing a discussion phase that was not part of the original task. This loses the prior context and progress.",
+            "impact": "HIGH"
+        },
+        {
+            "category": "2.4 Information Withholding",
+            "location": "step_02",
+            "evidence": "Agent_Code_Executor, what do you think about the interpretations of the memory system properties? Do you have additional insights, especially regarding any practical applications or examples related to this topic?",
+            "description": "The assistant asks for additional insights from Agent_Code_Executor without sharing the already determined analysis, which could have helped in providing more targeted insights.",
+            "impact": "MEDIUM"
+        },
+        {
+            "category": "3.1 Premature Termination",
+            "location": "step_04",
+            "evidence": "exitcode: 0 (execution succeeded) Code output: B",
+            "description": "The assistant stops the process after executing the code, but does not verify the output against the task requirements.",
+            "impact": "HIGH"
+        },
+        {
+            "category": "3.2 Weak Verification",
+            "location": "step_05",
+            "evidence": "I declare the final solution as follows: SOLUTION_FOUND \boxed{B}",
+            "description": "The assistant performs a superficial verification by merely agreeing with the previous conclusions without a thorough check against the task requirements.",
+            "impact": "MEDIUM"
+        }
+    ]
+}
+```

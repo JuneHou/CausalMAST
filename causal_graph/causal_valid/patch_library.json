@@ -1,0 +1,249 @@
+{
+  "1.1": {
+    "category": "1.1",
+    "mast_definition": "Disobey Task Specification — Violates constraints or requirements explicitly stated in the task.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "VIOLATED_CONSTRAINT": "The specific constraint or requirement that was violated (quoted from task or evidence)",
+      "CORRECT_BEHAVIOR": "What the agent should have done to comply with the constraint"
+    },
+    "error_type_spec_text": "error_type: 1.1 Disobey Task Specification\nmast_definition: Violates constraints or requirements explicitly stated in the task.\npatch_side_default: replace_step_content\nslot_extraction:\n- VIOLATED_CONSTRAINT: identify the specific requirement or constraint from the task that was violated, quoting it verbatim from ERROR_EVIDENCE or USER_REQUIREMENTS.\n- CORRECT_BEHAVIOR: describe the correct behavior that satisfies the violated constraint.\nrepair_instruction:\n- Rewrite the step content so that it complies with the stated constraint.\n- Preserve all other content and reasoning that does not violate any constraint.\n- Do not introduce new capabilities or expand the solution scope.\nforbidden_actions:\n- Do not remove valid reasoning or correct steps.\n- Do not fabricate new task requirements.\n- Do not change the solution approach unless required to satisfy the constraint.\npostcheck:\n- The violated constraint is no longer present in the patched step.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite the step so that it complies with the stated task constraint. Keep all valid reasoning intact.",
+    "forbidden_actions": [
+      "Do not fabricate new task requirements.",
+      "Do not change the solution approach unless required to satisfy the constraint."
+    ],
+    "postcheck": [
+      "The violated constraint is no longer present.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "1.2": {
+    "category": "1.2",
+    "mast_definition": "Disobey Role Specification — Ignores or violates the assigned agent role.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "ROLE_REQUIREMENT": "The role specification that was violated",
+      "CORRECT_ROLE_BEHAVIOR": "What behavior is consistent with the assigned role"
+    },
+    "error_type_spec_text": "error_type: 1.2 Disobey Role Specification\nmast_definition: Ignores or violates the assigned agent role.\npatch_side_default: replace_step_content\nslot_extraction:\n- ROLE_REQUIREMENT: identify the role specification being violated from ERROR_DESCRIPTION or USER_REQUIREMENTS.\n- CORRECT_ROLE_BEHAVIOR: describe the behavior that is consistent with the assigned role.\nrepair_instruction:\n- Rewrite the step so that the agent behaves within its assigned role.\n- Preserve the task-relevant content; only adjust the role-violating aspects.\nforbidden_actions:\n- Do not change the agent's goal or task objective.\n- Do not fabricate role specifications.\npostcheck:\n- The role violation is resolved in the patched step.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite the step so the agent operates within its assigned role.",
+    "forbidden_actions": [
+      "Do not change the agent's goal or task objective.",
+      "Do not fabricate role specifications."
+    ],
+    "postcheck": [
+      "The role violation is resolved.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "1.3": {
+    "category": "1.3",
+    "mast_definition": "Step Repetition — Repeats a task or phase already completed with a result.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "REPEATED_STEP": "Description of the step or phase that was unnecessarily repeated",
+      "PRIOR_RESULT": "The result that was already achieved before the repetition"
+    },
+    "error_type_spec_text": "error_type: 1.3 Step Repetition\nmast_definition: Repeats a task or phase already completed with a result.\npatch_side_default: replace_step_content\nslot_extraction:\n- REPEATED_STEP: identify what step or phase was unnecessarily repeated from ERROR_DESCRIPTION.\n- PRIOR_RESULT: identify the result that was already obtained before this repetition.\nrepair_instruction:\n- Replace the repetition with an acknowledgment of the prior result and a forward-looking step.\n- The agent should reference the previous result and proceed to the next logical step instead of repeating.\nforbidden_actions:\n- Do not fabricate new prior results.\n- Do not skip required steps (only remove genuinely redundant repetition).\npostcheck:\n- The repeated content is removed or replaced.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Replace the repeated step with acknowledgment of the prior result and a forward move.",
+    "forbidden_actions": [
+      "Do not fabricate prior results.",
+      "Do not skip genuinely required steps."
+    ],
+    "postcheck": [
+      "The redundant repetition is removed.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "1.4": {
+    "category": "1.4",
+    "mast_definition": "Loss of Conversation History — Fails to retain or use prior conversation context.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "LOST_CONTEXT": "The specific prior information that was not retained or referenced",
+      "REQUIRED_REFERENCE": "How the prior context should have been used in this step"
+    },
+    "error_type_spec_text": "error_type: 1.4 Loss of Conversation History\nmast_definition: Fails to retain or use prior conversation context.\npatch_side_default: replace_step_content\nslot_extraction:\n- LOST_CONTEXT: identify the prior information that was ignored or forgotten from ERROR_EVIDENCE.\n- REQUIRED_REFERENCE: describe how the prior context should have been incorporated.\nrepair_instruction:\n- Rewrite the step to correctly reference and incorporate the relevant prior context.\n- The agent should explicitly acknowledge the prior information and build on it.\nforbidden_actions:\n- Do not fabricate prior conversation content.\n- Do not introduce information that was not in the prior conversation.\npostcheck:\n- The step correctly references or incorporates the prior context.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite the step so it correctly references and uses the relevant prior context.",
+    "forbidden_actions": [
+      "Do not fabricate prior conversation content.",
+      "Do not introduce information not in prior context."
+    ],
+    "postcheck": [
+      "Prior context is correctly referenced.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "1.5": {
+    "category": "1.5",
+    "mast_definition": "Unaware of Termination Conditions — Continues past a valid stopping point or stops too early.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "TERMINATION_CONDITION": "The stopping condition that was missed or misidentified",
+      "CORRECT_ACTION": "Whether the agent should stop or continue, and why"
+    },
+    "error_type_spec_text": "error_type: 1.5 Unaware of Termination Conditions\nmast_definition: Continues past a valid stopping point or stops too early.\npatch_side_default: replace_step_content\nslot_extraction:\n- TERMINATION_CONDITION: identify the termination condition from ERROR_DESCRIPTION.\n- CORRECT_ACTION: determine whether the agent should stop (if it continued too long) or continue (if it stopped too early).\nrepair_instruction:\n- If the agent continued past a valid stop: rewrite to acknowledge completion and terminate cleanly.\n- If the agent stopped too early: rewrite to continue toward the required completion criterion.\nforbidden_actions:\n- Do not fabricate completion criteria.\n- Do not alter the task goal.\npostcheck:\n- The termination behavior is corrected.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Correct the termination behavior: stop if past valid stopping point, continue if stopped too early.",
+    "forbidden_actions": [
+      "Do not fabricate completion criteria.",
+      "Do not alter the task goal."
+    ],
+    "postcheck": [
+      "Termination behavior is corrected.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "2.1": {
+    "category": "2.1",
+    "mast_definition": "Conversation Reset — Resets the conversation, losing prior context and progress.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "LOST_PROGRESS": "The prior context or progress that was discarded by the reset",
+      "RECOVERY_ACTION": "How the step should be rewritten to preserve prior context"
+    },
+    "error_type_spec_text": "error_type: 2.1 Conversation Reset\nmast_definition: Resets the conversation, losing prior context and progress.\npatch_side_default: replace_step_content\nslot_extraction:\n- LOST_PROGRESS: identify the prior context or progress that the reset discarded.\n- RECOVERY_ACTION: describe how to rewrite the step to preserve context continuity.\nrepair_instruction:\n- Rewrite the step to continue from the prior state instead of resetting.\n- Explicitly reference the prior context that would have been lost.\nforbidden_actions:\n- Do not fabricate prior progress.\n- Do not remove legitimately new information.\npostcheck:\n- The reset is avoided; prior context is referenced.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite to continue from the prior state rather than resetting.",
+    "forbidden_actions": [
+      "Do not fabricate prior progress.",
+      "Do not remove legitimately new information."
+    ],
+    "postcheck": [
+      "The conversation reset is avoided.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "2.2": {
+    "category": "2.2",
+    "mast_definition": "Fail to Ask for Clarification — Proceeds without resolving ambiguity that required clarification.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "AMBIGUITY": "The specific ambiguity or unclear aspect that required clarification",
+      "CLARIFICATION_QUESTION": "A concrete clarification question the agent should have asked"
+    },
+    "error_type_spec_text": "error_type: 2.2 Fail to Ask for Clarification\nmast_definition: Proceeds without resolving ambiguity that required clarification.\npatch_side_default: replace_step_content\nslot_extraction:\n- AMBIGUITY: identify the specific ambiguity from ERROR_DESCRIPTION or ERROR_EVIDENCE.\n- CLARIFICATION_QUESTION: formulate the question the agent should have asked before proceeding.\nrepair_instruction:\n- Rewrite the step to explicitly identify the ambiguity and ask for clarification before proceeding.\n- The agent should pause its current action and request the missing information.\nforbidden_actions:\n- Do not fabricate an answer to the ambiguity.\n- Do not proceed with the original action while just adding a clarification note.\npostcheck:\n- The step asks for clarification rather than proceeding with the ambiguous assumption.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite to ask for clarification instead of proceeding with an ambiguous assumption.",
+    "forbidden_actions": [
+      "Do not fabricate an answer to the ambiguity.",
+      "Do not proceed with the original action while just noting the ambiguity."
+    ],
+    "postcheck": [
+      "The step asks for clarification before proceeding.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "2.3": {
+    "category": "2.3",
+    "mast_definition": "Task Derailment — Shifts focus away from the intended objective.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "INTENDED_OBJECTIVE": "The original task objective that was abandoned or deprioritized",
+      "DERAILMENT_DESCRIPTION": "How the agent shifted focus away from the objective"
+    },
+    "error_type_spec_text": "error_type: 2.3 Task Derailment\nmast_definition: Shifts focus away from the intended objective.\npatch_side_default: replace_step_content\nslot_extraction:\n- INTENDED_OBJECTIVE: identify the main task objective from USER_REQUIREMENTS or ERROR_DESCRIPTION.\n- DERAILMENT_DESCRIPTION: describe how the agent drifted from that objective.\nrepair_instruction:\n- Rewrite the step to refocus on the intended objective.\n- Explicitly reference the main goal and orient the step toward it.\nforbidden_actions:\n- Do not introduce new objectives.\n- Do not remove relevant subtasks that genuinely serve the main objective.\npostcheck:\n- The step is focused on the intended objective.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite to refocus on the intended objective.",
+    "forbidden_actions": [
+      "Do not introduce new objectives.",
+      "Do not remove subtasks that serve the main goal."
+    ],
+    "postcheck": [
+      "The step is refocused on the intended objective.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "2.4": {
+    "category": "2.4",
+    "mast_definition": "Information Withholding — Fails to share information needed by other agents.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "WITHHELD_INFORMATION": "The specific information that was not shared",
+      "WHY_NEEDED": "Why the other agent needs this information"
+    },
+    "error_type_spec_text": "error_type: 2.4 Information Withholding\nmast_definition: Fails to share information needed by other agents.\npatch_side_default: replace_step_content\nslot_extraction:\n- WITHHELD_INFORMATION: identify the information that was not passed to the other agent.\n- WHY_NEEDED: explain why the receiving agent needs this information to complete the task.\nrepair_instruction:\n- Rewrite the step to include and explicitly communicate the withheld information.\n- The information must be presented clearly for the receiving agent to use.\nforbidden_actions:\n- Do not fabricate information that was not available.\n- Do not add unrelated information.\npostcheck:\n- The required information is now shared in the patched step.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite to include the withheld information for the receiving agent.",
+    "forbidden_actions": [
+      "Do not fabricate information that was not available.",
+      "Do not add unrelated information."
+    ],
+    "postcheck": [
+      "The required information is now communicated.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "2.6": {
+    "category": "2.6",
+    "mast_definition": "Action-Reasoning Mismatch — Executes an action inconsistent with the stated reasoning.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "STATED_REASONING": "The reasoning or plan that was stated",
+      "INCONSISTENT_ACTION": "The action that contradicts the stated reasoning"
+    },
+    "error_type_spec_text": "error_type: 2.6 Action-Reasoning Mismatch\nmast_definition: Executes an action inconsistent with the stated reasoning.\npatch_side_default: replace_step_content\nslot_extraction:\n- STATED_REASONING: identify the reasoning or plan from ERROR_EVIDENCE or LOCAL_SNIPPET.\n- INCONSISTENT_ACTION: identify the action that contradicts the stated reasoning.\nrepair_instruction:\n- Rewrite the step so the action is consistent with the stated reasoning.\n- Either update the reasoning to match the action, or update the action to match the reasoning — whichever requires less change.\nforbidden_actions:\n- Do not fabricate new reasoning.\n- Do not change the overall task goal.\npostcheck:\n- The action and reasoning are now consistent in the patched step.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Align the action with the stated reasoning (or vice versa) with minimal change.",
+    "forbidden_actions": [
+      "Do not fabricate new reasoning.",
+      "Do not change the overall task goal."
+    ],
+    "postcheck": [
+      "Action and reasoning are now consistent.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "3.1": {
+    "category": "3.1",
+    "mast_definition": "Premature Termination — Stops before the task is complete or a required output is produced.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "INCOMPLETE_ASPECT": "What part of the task was left incomplete",
+      "REQUIRED_CONTINUATION": "What the agent should have continued doing"
+    },
+    "error_type_spec_text": "error_type: 3.1 Premature Termination\nmast_definition: Stops before the task is complete or a required output is produced.\npatch_side_default: replace_step_content\nslot_extraction:\n- INCOMPLETE_ASPECT: identify what was left unfinished from ERROR_DESCRIPTION.\n- REQUIRED_CONTINUATION: describe what the agent should have continued doing instead of stopping.\nrepair_instruction:\n- Rewrite the step to continue the task rather than terminate.\n- Explicitly identify remaining work and commit to completing it.\nforbidden_actions:\n- Do not fabricate completion of the remaining work in this step.\n- Do not add work beyond what was originally required.\npostcheck:\n- The step continues toward task completion rather than terminating.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite to continue the task rather than terminate prematurely.",
+    "forbidden_actions": [
+      "Do not fabricate completion of remaining work.",
+      "Do not add work beyond what was required."
+    ],
+    "postcheck": [
+      "The step continues toward completion.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "3.2": {
+    "category": "3.2",
+    "mast_definition": "Weak Verification — Performs only superficial or incomplete verification.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "MISSED_VERIFICATION": "The verification check that was skipped or performed superficially",
+      "THOROUGH_CHECK": "What a thorough verification would include"
+    },
+    "error_type_spec_text": "error_type: 3.2 Weak Verification\nmast_definition: Performs only superficial or incomplete verification.\npatch_side_default: replace_step_content\nslot_extraction:\n- MISSED_VERIFICATION: identify what verification was skipped or done superficially.\n- THOROUGH_CHECK: describe what a thorough verification would include.\nrepair_instruction:\n- Rewrite the step to include a thorough, substantive verification of the result.\n- The verification must check the actual output against the task requirements.\nforbidden_actions:\n- Do not fabricate verification results.\n- Do not add verification of aspects unrelated to the task requirements.\npostcheck:\n- The step performs thorough verification.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Rewrite to perform thorough verification against task requirements.",
+    "forbidden_actions": [
+      "Do not fabricate verification results.",
+      "Do not add unrelated verification checks."
+    ],
+    "postcheck": [
+      "Verification is now thorough and substantive.",
+      "patch_payload differs from local_snippet."
+    ]
+  },
+  "3.3": {
+    "category": "3.3",
+    "mast_definition": "No or Incorrect Verification — Skips verification entirely or verifies against wrong criteria.",
+    "patch_side_default": "replace_step_content",
+    "slot_schema": {
+      "CORRECT_CRITERION": "The correct verification criterion that should have been used",
+      "WRONG_OR_MISSING_CHECK": "What verification was missing or wrong"
+    },
+    "error_type_spec_text": "error_type: 3.3 No or Incorrect Verification\nmast_definition: Skips verification entirely or verifies against wrong criteria.\npatch_side_default: replace_step_content\nslot_extraction:\n- CORRECT_CRITERION: identify the correct criterion the output should have been verified against.\n- WRONG_OR_MISSING_CHECK: identify what verification was missing or incorrectly applied.\nrepair_instruction:\n- Rewrite the step to verify the result against the CORRECT criterion.\n- If no verification was done, add an explicit verification step.\n- If wrong criteria were used, correct them.\nforbidden_actions:\n- Do not fabricate verification outcomes.\n- Do not remove other valid content from the step.\npostcheck:\n- Verification is now present and uses the correct criterion.\n- patch_payload differs from local_snippet.",
+    "repair_instruction": "Add or correct verification using the right criterion.",
+    "forbidden_actions": [
+      "Do not fabricate verification outcomes.",
+      "Do not remove other valid content from the step."
+    ],
+    "postcheck": [
+      "Verification is now present and uses the correct criterion.",
+      "patch_payload differs from local_snippet."
+    ]
+  }
+}
