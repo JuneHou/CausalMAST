@@ -95,28 +95,52 @@ python eval/calculate_scores_yesno.py \
 
 ---
 
-### E3 — Graph-Guided Yes/No (causal graph injection)
+### E3 — Static Graph Context in Prompt (single-pass)
 
-- **Script**: `eval/run_eval_yesno_graph.py` *(to be created)*
-- **Model**: `openai/gpt-4o` or `openai/o1`
-- **Prompt**: Same @@ format + causal graph hints injected
-  - Uses validated edges from `causal_graph/outputs/interventions/effect_edges.json`
-  - Example hint: "When you detect 1.3 Step Repetition, also check for 1.5 Unaware of Termination Conditions (causal evidence, stability=0.82)"
-- **Output dir**: `outputs/{model}-yesno-graph/`
+- **Script**: `eval/run_eval_with_graph.py` *(to be created)*
+- **Model**: `mistralai/Mistral-Small-3.1-24B-Instruct-2503` (vLLM)
+- **Design**: Single-pass. The full validated causal graph (all edges + stability weights) is
+  prepended to the prompt as **static background context** before the yes/no questions.
+  The model reads the graph upfront and uses it during holistic error detection.
+  - Uses all validated edges from `causal_graph/outputs/edge_stability.json`
+  - Graph is presented as: `"1.3 → 1.5 [stability: 0.82]"` etc.
+- **Purpose**: Does showing the model the global co-occurrence structure improve detection vs. no-graph baseline?
+- **Output dir**: `outputs/{model}-yesno-with-graph/`
 
-**Status**: [ ] planned — create after E1/E2 establish baseline
+Run command:
+```bash
+CUDA_VISIBLE_DEVICES=4,5 python eval/run_eval_with_graph.py
+```
+
+**Status**: [ ] planned
 
 ---
 
-### E4 — Alternative Prompt: JSON Format (Option B)
+### E4 — Dynamic Graph Injection (2-pass, full method)
 
-- **Script**: `eval/run_eval_yesno.py` with `--prompt_format json` flag *(to be added)*
-- **Model**: `openai/gpt-4o`
-- **Prompt**: Ask LLM to output `{"1.1": true, "1.2": false, ...}` directly (cleaner parsing)
-- **Purpose**: Ablation — does prompt format affect prediction quality?
-- **Output dir**: `outputs/openai-gpt-4o-yesno-json/`
+- **Script**: `eval/run_eval_graph_inject.py` *(to be created)*
+- **Model**: `mistralai/Mistral-Small-3.1-24B-Instruct-2503` (vLLM)
+- **Design**: 2-pass with dynamic subgraph propagation — fundamentally different from E3's
+  static graph context.
+- **Pass 1**: Same as E3/E4 — holistic detection + span index extraction.
+- **Propagation**: `propagate_confidence()` takes Pass 1 detections as sources, walks the
+  causal graph, and builds a **filtered subgraph**: only edges where
+  `src ∈ detected` and `dst ∉ detected` and `boosted_score(dst) > threshold`.
+  This identifies exactly which undetected categories are statistically likely given
+  what was already found.
+- **Pass 2**: Re-checks only the propagated target categories, with the filtered subgraph
+  and span index injected. Only fires when Pass 1 detected at least one graph source.
+  Results merged with Pass 1 output (deduplication).
+- **Purpose**: Full proposed method — dynamic graph propagation surfaces missed errors
+  that are causally downstream of already-detected ones.
+- **Output dir**: `outputs/{model}-yesno-graph-inject/`
 
-**Status**: [ ] planned — after E1/E2
+Run command:
+```bash
+CUDA_VISIBLE_DEVICES=4,5 python eval/run_eval_graph_inject.py
+```
+
+**Status**: [ ] planned — after E3
 
 ---
 
@@ -138,10 +162,11 @@ python eval/calculate_scores_yesno.py \
 | Experiment | Model | Weighted F1 | Macro F1 | Notes |
 |---|---|---|---|---|
 | E0 (MAST paper) | o1 | — | — | paper numbers TBD |
-| E1 | o1 | — | — | |
-| E2 | gpt-4o | — | — | |
-| E3 | gpt-4o | — | — | + causal graph |
-| E4 | gpt-4o | — | — | JSON prompt |
+| E1 | o1 | — | — | pending |
+| E2 (gpt-4o) | gpt-4o | 0.0946 | 0.0656 | baseline |
+| E2 (mistral) | Mistral-Small-3.1-24B | 0.1190 | 0.0929 | baseline |
+| E3 | Mistral-Small-3.1-24B | — | — | + static graph context in prompt (single-pass) |
+| E4 | Mistral-Small-3.1-24B | — | — | + dynamic graph injection (2-pass) |
 
 ---
 
@@ -157,8 +182,11 @@ MAST/
 │   └── raw/
 │       └── MAD_full_dataset.json
 ├── eval/
-│   ├── run_eval_yesno.py                   ← E1/E2 prediction script
-│   ├── calculate_scores_yesno.py           ← scoring script
+│   ├── run_eval_yesno.py                   ← E1/E2 prediction script (OpenAI API)
+│   ├── run_eval_yesno_vllm.py              ← E2 prediction script (vLLM in-process)
+│   ├── run_eval_with_graph.py              ← E3/E4 (graph hint injection; span index)
+│   ├── run_eval_graph_inject.py            ← E4 (2-pass dynamic graph injection)
+│   ├── calculate_scores_yesno.py           ← scoring script (all experiments)
 │   └── experiments.md                      ← this file (lives at MAST root)
 ├── causal_graph/                           ← causal graph pipeline (Stage 1)
 │   ├── data/gt/                            ← step-level GT (for causal_graph eval only)
