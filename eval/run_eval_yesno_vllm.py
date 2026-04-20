@@ -154,6 +154,8 @@ def main():
                     help="Max new tokens per response (default: 2000)")
     ap.add_argument("--max_model_len", type=int, default=32768,
                     help="Max context length for the model (default: 8192)")
+    ap.add_argument("--model_tag", type=str, default=None,
+                    help="Override the model tag used in the output directory name")
     args = ap.parse_args()
 
     # Auto-detect tensor parallel size from CUDA_VISIBLE_DEVICES
@@ -173,7 +175,7 @@ def main():
             records.append(r)
     print(f"Loaded {len(records)} traces from {args.input}")
 
-    model_tag = args.model.replace("/", "-")
+    model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
     out_dir = os.path.join(args.output_dir, f"{model_tag}-yesno-baseline")
     os.makedirs(out_dir, exist_ok=True)
 

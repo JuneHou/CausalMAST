@@ -240,6 +240,8 @@ def main():
                     help="Min bootstrap stability frequency for default mode (default: 0.5)")
     ap.add_argument("--stability_graph", type=str, default=None)
     ap.add_argument("--effect_edges", type=str, default=None)
+    ap.add_argument("--model_tag", type=str, default=None,
+                    help="Override the model tag used in the output directory name")
     args = ap.parse_args()
 
     if args.tp is None:
@@ -266,7 +268,7 @@ def main():
     print(f"\nLoaded {len(records)} traces")
 
     graph_tag = "causal_only" if args.causal_only else f"t{args.edge_threshold}"
-    model_tag = args.model.replace("/", "-")
+    model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
     out_dir   = os.path.join(args.output_dir, f"{model_tag}-yesno-with-graph-{graph_tag}")
     os.makedirs(out_dir, exist_ok=True)
 
