@@ -237,6 +237,8 @@ def main():
     ap.add_argument("--batch_size", type=int, default=8)
     ap.add_argument("--max_tokens", type=int, default=2000)
     ap.add_argument("--max_model_len", type=int, default=108000)
+    ap.add_argument("--gpu_memory_utilization", type=float, default=0.9,
+                    help="Fraction of GPU memory vLLM may use per device (default: 0.9)")
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated edges from effect_edges.json")
     ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD,
@@ -290,6 +292,7 @@ def main():
         trust_remote_code=True,
         dtype="auto",
         max_model_len=args.max_model_len,
+        gpu_memory_utilization=args.gpu_memory_utilization,
     )
     sampling = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
 

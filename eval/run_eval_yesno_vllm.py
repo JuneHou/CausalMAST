@@ -149,6 +149,8 @@ def main():
                     help="Max new tokens per response (default: 2000)")
     ap.add_argument("--max_model_len", type=int, default=108000,
                     help="Max context length for the model (default: 8192)")
+    ap.add_argument("--gpu_memory_utilization", type=float, default=0.9,
+                    help="Fraction of GPU memory vLLM may use per device (default: 0.9)")
     ap.add_argument("--model_tag", type=str, default=None,
                     help="Override the model tag used in the output directory name")
     args = ap.parse_args()
@@ -191,6 +193,7 @@ def main():
         trust_remote_code=True,
         dtype="auto",
         max_model_len=args.max_model_len,
+        gpu_memory_utilization=args.gpu_memory_utilization,
     )
     sampling = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
 
