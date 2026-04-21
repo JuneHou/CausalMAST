@@ -102,24 +102,32 @@ def load_graph_edges(
     return edges
 
 
+def format_category_lookup() -> str:
+    """Produce a numbered code -> name lookup table for all 13 MAST categories."""
+    lines = ["CATEGORY CODE REFERENCE (always use the numbered code in your answer):"]
+    for code in MAST_MODES:
+        lines.append(f"  {code} = {MAST_NAMES[code]}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def format_graph_guidance(edges: List[Tuple[str, str, float]]) -> str:
     """Format edges as a static guidance block for injection into the prompt."""
     if not edges:
         return ""
     lines = [
+        format_category_lookup(),
         "CAUSAL ERROR PATTERNS (data-driven, from prior trace analysis):",
         "The following causal relationships between MAST error types have been statistically",
         "validated. When you identify an error of type A in the trace, actively look for",
         "errors of type B, as B has been found to causally follow A.",
         "Higher strength values indicate stronger causal association.",
         "",
-        "Format: [Source Error] -> [Consequent Error]  (strength: X.XX)",
+        "Format: [Source code] -> [Target code]  (strength: X.XX)",
         "",
     ]
     for src, dst, w in edges:
-        src_name = MAST_NAMES.get(src, src)
-        dst_name = MAST_NAMES.get(dst, dst)
-        lines.append(f"  {src} {src_name} → {dst} {dst_name}  (strength: {w:.2f})")
+        lines.append(f"  {src} -> {dst}  (strength: {w:.2f})")
     lines.append("")
     return "\n".join(lines)
 

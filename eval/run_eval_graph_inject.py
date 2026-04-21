@@ -206,7 +206,7 @@ def get_pass2_prompt(
         if pass1_detected else "(none)"
     )
     edge_lines = "\n".join(
-        f"  {src} {MAST_NAMES.get(src, src)} → {dst} {MAST_NAMES.get(dst, dst)}  [strength: {w:.2f}]"
+        f"  {src} -> {dst}  [strength: {w:.2f}]"
         for src, dst, w in filtered_edges
     )
     target_cats = list(dict.fromkeys(dst for _, dst, _ in filtered_edges))
@@ -215,12 +215,18 @@ def get_pass2_prompt(
         for cat in target_cats
     )
 
+    lookup_lines = ["CATEGORY CODE REFERENCE (always use the numbered code in your answer):"]
+    for code in MAST_MODES:
+        lookup_lines.append(f"  {code} = {MAST_NAMES[code]}")
+    lookup = "\n".join(lookup_lines)
+
     return (
         "You are performing a TARGETED SECOND-PASS analysis of a multiagent system trace.\n\n"
+        f"{lookup}\n\n"
         f"PASS 1 RESULTS — The following error types were already detected:\n{detected_summary}\n\n"
         "CAUSAL GRAPH CONTEXT — Statistical analysis of hundreds of agent traces has shown\n"
         "that when the PASS 1 errors above occur, the following TARGET errors very frequently\n"
-        "co-occur or follow causally (source → target [causal strength]):\n"
+        "co-occur or follow causally (source code = source name -> target code = target name [strength]):\n"
         f"{edge_lines}\n\n"
         "TASK: Re-read the trace below and decide YES or NO for each TARGET error type.\n"
         "Because these targets are statistically likely given the Pass 1 detections, look\n"
