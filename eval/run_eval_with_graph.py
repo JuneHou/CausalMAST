@@ -107,13 +107,13 @@ def format_graph_guidance(edges: List[Tuple[str, str, float]]) -> str:
     if not edges:
         return ""
     lines = [
-        "# Causal Error Patterns (data-driven, from prior trace analysis)",
+        "CAUSAL ERROR PATTERNS (data-driven, from prior trace analysis):",
         "The following causal relationships between MAST error types have been statistically",
         "validated. When you identify an error of type A in the trace, actively look for",
         "errors of type B, as B has been found to causally follow A.",
         "Higher strength values indicate stronger causal association.",
         "",
-        "Format: [Source Error] → [Consequent Error]  (strength: X.XX)",
+        "Format: [Source Error] -> [Consequent Error]  (strength: X.XX)",
         "",
     ]
     for src, dst, w in edges:
