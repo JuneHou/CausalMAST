@@ -204,6 +204,7 @@ def parse_response(response: str) -> dict:
         cleaned = cleaned[2:]
     if cleaned.endswith("@@"):
         cleaned = cleaned[:-2]
+    cleaned = re.sub(r'\*\*(yes|no)\*\*', r'\1', cleaned, flags=re.IGNORECASE)
     result = {}
     for mode in MAST_MODES:
         patterns = [
