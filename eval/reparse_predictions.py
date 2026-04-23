@@ -20,6 +20,21 @@ MAST_MODES = ["1.1", "1.2", "1.3", "1.4", "1.5",
               "3.1", "3.2", "3.3"]
 
 
+def strip_thinking(text: str) -> tuple:
+    """Return (thinking_text, remaining_text), handling two formats:
+      1. Complete <think>...</think> pair.
+      2. Orphan </think> — vLLM injects the opening tag via chat template so
+         generated tokens start mid-thought (QwQ-32B pattern).
+    """
+    match = re.search(r'<think>(.*?)</think>', text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip(), (text[:match.start()] + text[match.end():]).strip()
+    idx = text.find('</think>')
+    if idx != -1:
+        return text[:idx].strip(), text[idx + 8:].strip()
+    return "", text.strip()
+
+
 def parse_response(response: str) -> dict:
     cleaned = response.strip()
     if cleaned.startswith("@@"):
@@ -56,8 +71,19 @@ def reparse_dir(pred_dir: Path) -> int:
             rec = json.load(f)
         if "raw_response" not in rec:
             continue
-        new_preds = parse_response(rec["raw_response"])
-        if new_preds != rec.get("predictions"):
+        # Strip thinking from raw_response before parsing; also update the
+        # stored raw_response and thinking fields if not already split.
+        raw = rec["raw_response"]
+        thinking, answer = strip_thinking(raw)
+        new_preds = parse_response(answer)
+        changed = new_preds != rec.get("predictions")
+        # Update thinking/raw_response split if we found a thinking block
+        # that wasn't separated before (thinking field absent or empty)
+        if thinking and not rec.get("thinking"):
+            rec["thinking"] = thinking
+            rec["raw_response"] = answer
+            changed = True
+        if changed:
             rec["predictions"] = new_preds
             with open(fpath, "w") as f:
                 json.dump(rec, f, indent=2, ensure_ascii=False)

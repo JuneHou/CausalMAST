@@ -249,6 +249,23 @@ def get_pass2_prompt(
 # Parsing
 # ---------------------------------------------------------------------------
 
+def strip_thinking(text: str) -> tuple:
+    """Remove thinking block; return (thinking_text, remaining_text).
+
+    Handles two formats:
+      1. Complete <think>...</think> pair (Qwen3, DeepSeek with explicit open tag).
+      2. Orphan </think> only — vLLM injects the opening <think> via chat template
+         so generated tokens start mid-thought with no <think> tag (QwQ-32B pattern).
+    """
+    match = re.search(r'<think>(.*?)</think>', text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip(), (text[:match.start()] + text[match.end():]).strip()
+    idx = text.find('</think>')
+    if idx != -1:
+        return text[:idx].strip(), text[idx + 8:].strip()
+    return "", text.strip()
+
+
 def parse_response(response: str) -> dict:
     """Parse full yes/no response for all 13 MAST categories."""
     cleaned = response.strip()
@@ -309,7 +326,7 @@ def main():
     ap.add_argument("--input", default="data/annotation/annotation_ag2_filtered.jsonl")
     ap.add_argument("--output_dir", default="outputs")
     ap.add_argument("--batch_size", type=int, default=8)
-    ap.add_argument("--max_tokens", type=int, default=2000)
+    ap.add_argument("--max_tokens", type=int, default=8000)
     ap.add_argument("--max_model_len", type=int, default=108000)
     ap.add_argument("--gpu_memory_utilization", type=float, default=0.9,
                     help="Fraction of GPU memory vLLM may use per device (default: 0.9)")
@@ -323,6 +340,8 @@ def main():
     ap.add_argument("--effect_edges", type=str, default=None)
     ap.add_argument("--model_tag", type=str, default=None,
                     help="Override the model tag used in the output directory name")
+    ap.add_argument("--enable_thinking", action="store_true",
+                    help="Pass enable_thinking=True via chat_template_kwargs (for QwQ/Qwen3/DeepSeek-R1)")
     args = ap.parse_args()
 
     if args.tp is None:
@@ -349,7 +368,8 @@ def main():
 
     graph_tag = "causal_only" if args.causal_only else f"t{args.edge_threshold}"
     model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
-    out_dir   = os.path.join(args.output_dir, f"{model_tag}-yesno-graph-inject-{graph_tag}")
+    thinking_suffix = "-thinking" if args.enable_thinking else ""
+    out_dir   = os.path.join(args.output_dir, f"{model_tag}-yesno-graph-inject-{graph_tag}{thinking_suffix}")
     os.makedirs(out_dir, exist_ok=True)
 
     pending = [r for r in records
@@ -371,10 +391,12 @@ def main():
     )
     sampling = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
 
+    chat_template_kwargs = {"enable_thinking": True} if args.enable_thinking else {}
+
     # ------------------------------------------------------------------
     # Pass 1 — batch all pending traces
     # ------------------------------------------------------------------
-    print(f"\n--- Pass 1: holistic yes/no detection ({len(pending)} traces) ---")
+    print(f"\n--- Pass 1: holistic yes/no detection ({len(pending)} traces, enable_thinking={args.enable_thinking}) ---")
     p1_conversations = [
         [{"role": "user", "content": get_pass1_prompt(format_trace(r["steps"]))}]
         for r in pending
@@ -382,13 +404,15 @@ def main():
     p1_outputs = []
     for i in tqdm(range(0, len(p1_conversations), args.batch_size)):
         batch = p1_conversations[i: i + args.batch_size]
-        outputs = llm.chat(batch, sampling_params=sampling, use_tqdm=False)
+        outputs = llm.chat(batch, sampling_params=sampling, use_tqdm=False,
+                           chat_template_kwargs=chat_template_kwargs)
         p1_outputs.extend(outputs)
 
     p1_predictions = []
     for output in p1_outputs:
-        raw = output.outputs[0].text if output.outputs else ""
-        p1_predictions.append(parse_response(raw))
+        full_text = output.outputs[0].text if output.outputs else ""
+        _, visible = strip_thinking(full_text)
+        p1_predictions.append(parse_response(visible))
 
     # ------------------------------------------------------------------
     # Propagation — determine which traces need Pass 2
@@ -420,11 +444,13 @@ def main():
         p2_outputs = []
         for i in tqdm(range(0, len(p2_conversations), args.batch_size)):
             batch = p2_conversations[i: i + args.batch_size]
-            outputs = llm.chat(batch, sampling_params=sampling, use_tqdm=False)
+            outputs = llm.chat(batch, sampling_params=sampling, use_tqdm=False,
+                               chat_template_kwargs=chat_template_kwargs)
             p2_outputs.extend(outputs)
 
         for (r, p1_pred, filtered), output in zip(pass2_needed, p2_outputs):
-            raw = output.outputs[0].text if output.outputs else ""
+            full_text = output.outputs[0].text if output.outputs else ""
+            _, raw = strip_thinking(full_text)
             target_cats = list(dict.fromkeys(dst for _, dst, _ in filtered))
             p2_pred = parse_pass2_response(raw, target_cats)
             p2_results[r["_rec_id"]] = p2_pred
@@ -443,14 +469,18 @@ def main():
                 merged[cat] = 1
 
         p2_triggered = rec_id in p2_results
+        full_p1_text = p1_output.outputs[0].text if p1_output.outputs else ""
+        p1_thinking, p1_raw = strip_thinking(full_p1_text)
         out = {
             "rec_id": rec_id,
             "trace_id": r.get("trace_id"),
             "predictions": merged,
-            "raw_response": p1_output.outputs[0].text if p1_output.outputs else "",
+            "raw_response": p1_raw,
             "pass2_triggered": p2_triggered,
             "pass2_upgrades": {k: v for k, v in p2_upgrades.items() if v == 1 and p1_pred.get(k, 0) == 0},
         }
+        if p1_thinking:
+            out["thinking"] = p1_thinking
         with open(os.path.join(out_dir, f"{rec_id}.json"), "w") as f:
             json.dump(out, f, indent=2, ensure_ascii=False)
 

@@ -103,6 +103,23 @@ def get_prompt(trace_text: str) -> str:
     )
 
 
+def strip_thinking(text: str) -> tuple:
+    """Remove thinking block; return (thinking_text, remaining_text).
+
+    Handles two formats:
+      1. Complete <think>...</think> pair (Qwen3, DeepSeek with explicit open tag).
+      2. Orphan </think> only — vLLM injects the opening <think> via chat template
+         so generated tokens start mid-thought with no <think> tag (QwQ-32B pattern).
+    """
+    match = re.search(r'<think>(.*?)</think>', text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip(), (text[:match.start()] + text[match.end():]).strip()
+    idx = text.find('</think>')
+    if idx != -1:
+        return text[:idx].strip(), text[idx + 8:].strip()
+    return "", text.strip()
+
+
 def parse_response(response: str) -> dict:
     cleaned = response.strip()
     if cleaned.startswith("@@"):
@@ -146,7 +163,7 @@ def main():
                     help="Root output directory (default: outputs/)")
     ap.add_argument("--batch_size", type=int, default=8,
                     help="Inference batch size (default: 32)")
-    ap.add_argument("--max_tokens", type=int, default=2000,
+    ap.add_argument("--max_tokens", type=int, default=8000,
                     help="Max new tokens per response (default: 2000)")
     ap.add_argument("--max_model_len", type=int, default=108000,
                     help="Max context length for the model (default: 8192)")
@@ -154,6 +171,8 @@ def main():
                     help="Fraction of GPU memory vLLM may use per device (default: 0.9)")
     ap.add_argument("--model_tag", type=str, default=None,
                     help="Override the model tag used in the output directory name")
+    ap.add_argument("--enable_thinking", action="store_true",
+                    help="Pass enable_thinking=True via chat_template_kwargs (for QwQ/Qwen3/DeepSeek-R1)")
     args = ap.parse_args()
 
     # Auto-detect tensor parallel size from CUDA_VISIBLE_DEVICES
@@ -174,7 +193,8 @@ def main():
     print(f"Loaded {len(records)} traces from {args.input}")
 
     model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
-    out_dir = os.path.join(args.output_dir, f"{model_tag}-yesno-baseline")
+    thinking_suffix = "-thinking" if args.enable_thinking else ""
+    out_dir = os.path.join(args.output_dir, f"{model_tag}-yesno-baseline{thinking_suffix}")
     os.makedirs(out_dir, exist_ok=True)
 
     # Filter out already-completed records
@@ -204,17 +224,21 @@ def main():
         trace_text = format_trace(r["steps"])
         conversations.append([{"role": "user", "content": get_prompt(trace_text)}])
 
+    chat_template_kwargs = {"enable_thinking": True} if args.enable_thinking else {}
+
     # Batch inference
-    print(f"Running inference (batch_size={args.batch_size})...")
+    print(f"Running inference (batch_size={args.batch_size}, enable_thinking={args.enable_thinking})...")
     all_outputs = []
     for i in tqdm(range(0, len(conversations), args.batch_size)):
         batch = conversations[i : i + args.batch_size]
-        outputs = llm.chat(batch, sampling_params=sampling, use_tqdm=False)
+        outputs = llm.chat(batch, sampling_params=sampling, use_tqdm=False,
+                           chat_template_kwargs=chat_template_kwargs)
         all_outputs.extend(outputs)
 
     # Save results
     for r, output in zip(pending, all_outputs):
-        raw_response = output.outputs[0].text if output.outputs else ""
+        full_text = output.outputs[0].text if output.outputs else ""
+        thinking, raw_response = strip_thinking(full_text)
         predictions = parse_response(raw_response)
         out = {
             "rec_id": r["_rec_id"],
@@ -222,6 +246,8 @@ def main():
             "predictions": predictions,
             "raw_response": raw_response,
         }
+        if thinking:
+            out["thinking"] = thinking
         with open(os.path.join(out_dir, f"{r['_rec_id']}.json"), "w") as f:
             json.dump(out, f, indent=2, ensure_ascii=False)
 
