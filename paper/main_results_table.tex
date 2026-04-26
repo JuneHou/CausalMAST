@@ -1,0 +1,110 @@
+% ============================================================
+% TABLE 1 — Main Results on the MAST Benchmark
+%
+% Dataset: AG2 traces, annotation_ag2_filtered.jsonl (N=393)
+% Ground truth: mast_annotation field (human-labeled binary, 13 categories)
+%
+% Method: +CG = E3 with-graph, causal_only (7 intervention-validated edges),
+%   code+name format: "1.1(Disobey Task Specification) -> 3.3(...) (strength: X.XX)"
+%
+% Footnotes:
+%   * QwQ-32B uses enable_thinking; E3 shown (hurts vs baseline);
+%     E4 graph-inject achieves W-F1=17.17 / Macro-F1=13.64.
+%   † Gemma-3-27B: codename format shown; code-only achieves W-F1=14.89.
+%   ‡ o1 on 100-trace stratified sample; not comparable to N=393.
+% ============================================================
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l l rr}
+\toprule
+\textbf{Model} & \textbf{Method} & \textbf{W-F1} & \textbf{Macro-F1} \\
+\midrule
+\multirow{2}{*}{Mistral-Small-3.1-24B}
+  & Baseline &        37.73  &        26.86  \\
+  & +CG      & \textbf{52.95} & \textbf{37.22} \\[3pt]
+\multirow{2}{*}{GPT-oss-20B}
+  & Baseline &        17.66  &        12.47  \\
+  & +CG      & \textbf{18.72} & \textbf{13.14} \\[3pt]
+\multirow{2}{*}{QwQ-32B$^{*}$}
+  & Baseline &        16.08  &        12.02  \\
+  & +CG      &        15.13  &        10.58  \\[3pt]
+\multirow{2}{*}{Gemma-3-27B-IT$^{\dagger}$}
+  & Baseline &        14.19  &         8.27  \\
+  & +CG      &        13.23  & \textbf{9.91}  \\[3pt]
+\midrule
+\multirow{2}{*}{GPT-4o}
+  & Baseline &         8.94  &         6.18  \\
+  & +CG      & \textbf{14.10} & \textbf{10.33} \\[3pt]
+\multirow{2}{*}{o1$^{\ddagger}$}
+  & Baseline &         9.08  &         5.81  \\
+  & +CG      & \text{---}    & \text{---}    \\
+\bottomrule
+\end{tabular}
+\caption{%
+  Main results on the MAST benchmark (393 AG2 traces, 13 error categories).
+  \textbf{W-F1}: weighted F1 (weighted by per-category support).
+  \textbf{Macro-F1}: unweighted average F1 across all 13 categories.
+  All metrics in \%.
+  \textbf{+CG}: static causal graph injection (E3) --- 7 intervention-validated
+  edges in code+name format prepended before yes/no questions.
+  Bold: improvement over the model's own baseline.
+  Horizontal rule separates open-weights (top) from closed-source (bottom) models.
+  $^{*}$QwQ-32B uses chain-of-thought reasoning (\texttt{enable\_thinking});
+  E3 with-graph shown; E4 graph-inject achieves W-F1\,=\,17.17 / Macro-F1\,=\,13.64
+  (only model where E4\,$>$\,E3\,$>$\,baseline).
+  $^{\dagger}$Gemma-3-27B: code+name edge format shown; code-only format achieves
+  W-F1\,=\,14.89 (code+name suppresses detection for this model).
+  $^{\ddagger}$o1 evaluated on a 100-trace stratified sample ($N{=}100$);
+  not directly comparable to full-dataset results; +CG not run.
+  \text{---}: condition not run.%
+}
+\label{tab:main_results}
+\end{table*}
+
+
+% ============================================================
+% TABLE 2 — Ablation: Graph Method Variants
+%
+% Mistral-Small-3.1-24B on MAST (N=393).
+% Justifies choice of +CG code+name (E3) as the primary method.
+%
+% Methods:
+%   Baseline    : no graph
+%   +CG code    : E3 with-graph, causal_only, code-only edges (1.1 -> 3.3)
+%   +CG codename: E3 with-graph, causal_only, code+name edges  <-- best
+%   +GI codename: E4 graph-inject, causal_only, code+name edges
+% ============================================================
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l rr}
+\toprule
+\textbf{Method} & \textbf{W-F1} & \textbf{Macro-F1} \\
+\midrule
+Baseline                  & 37.73          & 26.86 \\
++CG (code)                & 47.58          & 32.84 \\
++CG (code+name)           & \textbf{52.95} & \textbf{37.22} \\
++GI (code+name)           & 37.01          & 25.86 \\
+\bottomrule
+\end{tabular}
+\caption{%
+  Ablation of causal graph variants on MAST
+  (Mistral-Small-3.1-24B, $N{=}393$, all metrics in \%).
+  \textbf{+CG}: static causal graph context injected before yes/no questions (E3 with-graph).
+  \textbf{+GI}: 2-pass dynamic graph injection (E4): Pass~1 detects errors,
+  Pass~2 injects edges originating from detected errors only.
+  \textbf{code}: edges formatted as \texttt{1.1\,$\rightarrow$\,3.3}.
+  \textbf{code+name}: edges formatted as
+  \texttt{1.1(Disobey Task Specification)\,$\rightarrow$\,3.3(\ldots)}.
+  All graph conditions use 7 intervention-validated causal edges (\texttt{causal\_only}).
+  Bold: best per metric.%
+}
+\label{tab:ablation_methods}
+\end{table}
