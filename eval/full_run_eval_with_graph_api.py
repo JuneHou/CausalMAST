@@ -23,6 +23,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import math
+
 import litellm
 from litellm import completion, ContextWindowExceededError, RateLimitError
 from dotenv import load_dotenv, find_dotenv
@@ -43,6 +45,7 @@ _GRAPH_DIR   = _MAST_DIR / "causal_graph" / "outputs"
 
 DEFAULT_STABILITY_GRAPH = _GRAPH_DIR / "edge_stability.json"
 DEFAULT_EFFECT_EDGES    = _GRAPH_DIR / "interventions" / "effect_edges.json"
+DEFAULT_SUPPES_GRAPH    = _GRAPH_DIR / "suppes_graph.json"
 
 _TAXONOMY_DIR = _MAST_DIR / "taxonomy_definitions_examples"
 DEFINITIONS   = (_TAXONOMY_DIR / "definitions.txt").read_text()
@@ -78,6 +81,7 @@ def load_graph_edges(
     causal_only: bool = False,
     stability_graph: Path = DEFAULT_STABILITY_GRAPH,
     effect_edges: Path = DEFAULT_EFFECT_EDGES,
+    suppes_graph: Path = DEFAULT_SUPPES_GRAPH,
 ) -> List[Tuple[str, str, float]]:
     if causal_only:
         with open(effect_edges) as f:
@@ -90,33 +94,58 @@ def load_graph_edges(
     else:
         with open(stability_graph) as f:
             data = json.load(f)
-        edges = [
-            (e["a"], e["b"], e["frequency"])
+        stable_pairs = {
+            (e["a"], e["b"])
             for e in data["edges"]
             if e["frequency"] >= threshold
-        ]
+        }
+        with open(suppes_graph) as f:
+            suppes_data = json.load(f)
+        suppes_idx = {(e["a"], e["b"]): e for e in suppes_data["edges"]}
+        edges = []
+        for a, b in stable_pairs:
+            s = suppes_idx.get((a, b))
+            if s:
+                score = math.sqrt(s["p_b_given_a"] * s["pr_delta"])
+                edges.append((a, b, score))
     edges.sort(key=lambda x: -x[2])
     return edges
 
 
-def format_graph_guidance(edges: List[Tuple[str, str, float]]) -> str:
+def format_graph_guidance(edges: List[Tuple[str, str, float]], causal_only: bool = True) -> str:
     """Format edges using code+name inline format — no separate lookup table needed."""
     if not edges:
         return ""
-    lines = [
-        "CAUSAL ERROR PATTERNS (data-driven, from prior trace analysis):",
-        "The following causal relationships between MAST error types have been statistically",
-        "validated. When you identify an error of type A in the trace, actively look for",
-        "errors of type B, as B has been found to causally follow A.",
-        "Higher strength values indicate stronger causal association.",
-        "",
-        "Format: [code(name)] -> [code(name)]  (strength: X.XX)",
-        "",
-    ]
-    for src, dst, w in edges:
-        lines.append(
-            f"  {src}({MAST_NAMES[src]}) -> {dst}({MAST_NAMES[dst]})  (strength: {w:.2f})"
-        )
+    if causal_only:
+        lines = [
+            "CAUSAL ERROR PATTERNS (intervention-validated):",
+            "The following edges were validated via counterfactual patching experiments.",
+            "When you identify error type A, actively look for error type B,",
+            "as removing A causally reduces B's occurrence rate.",
+            "Higher values indicate stronger causal effect (reduction in B's rate when A is patched).",
+            "",
+            "Format: [code(name)] -> [code(name)]  (causal effect: X.XX)",
+            "",
+        ]
+        for src, dst, w in edges:
+            lines.append(
+                f"  {src}({MAST_NAMES[src]}) -> {dst}({MAST_NAMES[dst]})  (causal effect: {w:.2f})"
+            )
+    else:
+        lines = [
+            "CORRELATED ERROR PATTERNS (observational, precedence-filtered):",
+            "The following error pairs consistently co-occur with A preceding B across agent traces.",
+            "Score = geometric mean of P(B|A) and probability-raising delta P(B|A)−P(B|¬A).",
+            "When you identify error type A, consider also checking for error type B.",
+            "Higher values indicate stronger observational association.",
+            "",
+            "Format: [code(name)] -> [code(name)]  (observational score: X.XX)",
+            "",
+        ]
+        for src, dst, w in edges:
+            lines.append(
+                f"  {src}({MAST_NAMES[src]}) -> {dst}({MAST_NAMES[dst]})  (observational score: {w:.2f})"
+            )
     lines.append("")
     return "\n".join(lines)
 
@@ -301,6 +330,7 @@ def main():
     ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD)
     ap.add_argument("--stability_graph", type=str, default=None)
     ap.add_argument("--effect_edges", type=str, default=None)
+    ap.add_argument("--suppes_graph", type=str, default=None)
     ap.add_argument("--model_tag", type=str, default=None,
                     help="Override the model tag used in the output directory name")
     ap.add_argument("--sample_indices", type=str, default=None,
@@ -311,8 +341,9 @@ def main():
     # Load graph
     stability_path = Path(args.stability_graph) if args.stability_graph else DEFAULT_STABILITY_GRAPH
     effect_path    = Path(args.effect_edges)    if args.effect_edges    else DEFAULT_EFFECT_EDGES
-    edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path)
-    graph_guidance = format_graph_guidance(edges)
+    suppes_path    = Path(args.suppes_graph)    if args.suppes_graph    else DEFAULT_SUPPES_GRAPH
+    edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path, suppes_path)
+    graph_guidance = format_graph_guidance(edges, causal_only=args.causal_only)
     mode_str = "causal_only" if args.causal_only else f"stability>={args.edge_threshold}"
     print(f"Graph: {len(edges)} edges ({mode_str})")
     for src, dst, w in edges:

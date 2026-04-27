@@ -13,6 +13,7 @@ Usage (run from MAST/):
 import os
 import re
 import json
+import math
 import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -34,6 +35,7 @@ _GRAPH_DIR = _MAST_DIR / "causal_graph" / "outputs"
 
 DEFAULT_STABILITY_GRAPH = _GRAPH_DIR / "edge_stability.json"
 DEFAULT_EFFECT_EDGES    = _GRAPH_DIR / "interventions" / "effect_edges.json"
+DEFAULT_SUPPES_GRAPH    = _GRAPH_DIR / "suppes_graph.json"
 
 _TAXONOMY_DIR = _MAST_DIR / "taxonomy_definitions_examples"
 DEFINITIONS   = (_TAXONOMY_DIR / "definitions.txt").read_text()
@@ -69,6 +71,7 @@ def load_graph_edges(
     causal_only: bool = False,
     stability_graph: Path = DEFAULT_STABILITY_GRAPH,
     effect_edges: Path = DEFAULT_EFFECT_EDGES,
+    suppes_graph: Path = DEFAULT_SUPPES_GRAPH,
 ) -> List[Tuple[str, str, float]]:
     if causal_only:
         with open(effect_edges) as f:
@@ -81,11 +84,20 @@ def load_graph_edges(
     else:
         with open(stability_graph) as f:
             data = json.load(f)
-        edges = [
-            (e["a"], e["b"], e["frequency"])
+        stable_pairs = {
+            (e["a"], e["b"])
             for e in data["edges"]
             if e["frequency"] >= threshold
-        ]
+        }
+        with open(suppes_graph) as f:
+            suppes_data = json.load(f)
+        suppes_idx = {(e["a"], e["b"]): e for e in suppes_data["edges"]}
+        edges = []
+        for a, b in stable_pairs:
+            s = suppes_idx.get((a, b))
+            if s:
+                score = math.sqrt(s["p_b_given_a"] * s["pr_delta"])
+                edges.append((a, b, score))
     edges.sort(key=lambda x: -x[2])
     return edges
 
@@ -321,6 +333,7 @@ def main():
                     help="Min boosted score to trigger Pass 2 for a target category (default: 0.1)")
     ap.add_argument("--stability_graph", type=str, default=None)
     ap.add_argument("--effect_edges", type=str, default=None)
+    ap.add_argument("--suppes_graph", type=str, default=None)
     ap.add_argument("--model_tag", type=str, default=None,
                     help="Override the model tag used in the output directory name")
     ap.add_argument("--enable_thinking", action="store_true",
@@ -334,7 +347,8 @@ def main():
     # Load graph
     stability_path = Path(args.stability_graph) if args.stability_graph else DEFAULT_STABILITY_GRAPH
     effect_path    = Path(args.effect_edges)    if args.effect_edges    else DEFAULT_EFFECT_EDGES
-    edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path)
+    suppes_path    = Path(args.suppes_graph)    if args.suppes_graph    else DEFAULT_SUPPES_GRAPH
+    edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path, suppes_path)
     mode_str = "causal_only" if args.causal_only else f"stability>={args.edge_threshold}"
     print(f"Graph: {len(edges)} edges ({mode_str})")
     for src, dst, w in edges:

@@ -27,11 +27,11 @@ All graph experiments use causal_only edges (7 intervention-validated edges).
 | Model | Baseline | +with-graph code+name | +graph-inject code+name | Notes |
 |---|---|---|---|---|
 | Mistral-Small-24B | ✓ 0.3773 | ✓ **0.5295** | ✓ 0.3701 | vLLM; all done |
-| Gemma-3-27B | ✓ 0.1419 | ✓ 0.1323 | ✗ | vLLM; low performance, deprioritized |
-| GPT-oss 20B | ✓ 0.1766 | ✓ 0.1872 | ✓ 0.1884 | API; done |
-| QwQ-32B | ✓ 0.1608 | ✓ 0.1513 | ✓ 0.1717 | vLLM; all done; E4 best variant |
-| GPT-4o | ✓ 0.0894 | ✓ 0.1410 | ✗ | API; graph-inject missing |
-| o1 | ✓ 0.0908† | ✗ | ✗ | API; sample only; with-graph missing |
+| Gemma-3-27B | ✓ 0.1419 | ✓ 0.1323 | ✓ 0.1412 | vLLM; done |
+| GPT-oss 20B | ✓ 0.1766 | ✓ 0.1872 | ✓ 0.1884 | vLLM; done |
+| QwQ-32B | ✓ 0.1608 | ✓ 0.1513 | ✗ codename not run (T9); non-codename=0.1717 | vLLM |
+| GPT-4o | ✓ 0.0894 | ✓ 0.1410 | ✗ not run (T2) | API |
+| o1 | ✓ 0.0908† | ✗ | ✗ | API; omitted from paper |
 
 † Scored on 100-trace stratified sample only.
 
@@ -61,26 +61,59 @@ All graph experiments use causal_only edges (7 intervention-validated edges).
 
 ## Task List (Priority Order)
 
-### T6 — Mistral: full stability graph (E3, threshold=0.5) ✓ done
-W-F1=0.5237 — **below causal_only (0.5295)**. Extra edges add noise, especially to 3.3 (-0.084 F1). causal_only edges remain optimal. E4 with t0.5 not worth running.
+### T9 — QwQ-32B: graph-inject codename + thinking (new run)
 
-Outputs: `outputs_corr/mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-with-graph-codename-t0.5/`
+Existing QwQ +GI used `eval/thinking/run_eval_graph_inject.py` (non-codename).
+Need codename version via `full_run_eval_graph_inject.py` with `--enable_thinking`:
+
+```bash
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model <qwq_model_path> \
+    --model_tag QwQ-32B \
+    --causal_only \
+    --enable_thinking \
+    --output_dir outputs_think
+```
+
+Expected output: `outputs_think/QwQ-32B-yesno-graph-inject-codename-causal_only-thinking/`
+
+Score after run:
+
+```bash
+python eval/calculate_scores_yesno.py \
+    --pred_dir outputs_think/QwQ-32B-yesno-graph-inject-codename-causal_only-thinking
+```
 
 ---
 
-### T4 (partial) — o1: with-graph code+name (100-trace sample)
-Only run if cost is acceptable. Baseline result (0.091) suggests high probability of failure.
+### T10 — Mistral: +CG and +GI with t≥0.4 stability graph (new geomean scoring)
+
+Previous t0.5 runs used raw stability frequency as strength — now replaced with geomean(P(B|A), PR_delta).
+t≥0.4 covers 11/13 error types (adds 3.3 vs t≥0.5; 1.2 and 3.2 uncoverable at any threshold).
+14 edges at t≥0.4 vs 11 at t≥0.5.
 
 ```bash
-python eval/full_run_eval_with_graph_api.py \
-    --model openai/o1 \
-    --causal_only \
-    --sample_indices data/o1_sample_indices.json \
-    --output_dir outputs_o1
+# E3 +CG
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_with_graph.py \
+    --edge_threshold 0.4 \
+    --output_dir outputs_corr
+
+# E4 +GI
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --edge_threshold 0.4 \
+    --output_dir outputs_corr
 ```
 
-Score against GT filtered to sampled indices only.
-Note: o1 does not support `temperature` parameter — omit or set to 1.
+Expected outputs:
+- `outputs_corr/mistralai-Mistral-Small-3.1-24B-v2-yesno-with-graph-codename-t0.4/`
+- `outputs_corr/mistralai-Mistral-Small-3.1-24B-v2-yesno-graph-inject-codename-t0.4/`
+
+Score after each run:
+```bash
+python eval/calculate_scores_yesno.py --pred_dir outputs_corr/<subdir>
+```
+
+Note: old t0.5 runs in `outputs_corr/` used raw frequency as strength — not comparable to new geomean scoring.
 
 ---
 

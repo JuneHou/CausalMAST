@@ -4,14 +4,15 @@
 % Dataset: AG2 traces, annotation_ag2_filtered.jsonl (N=393)
 % Ground truth: mast_annotation field (human-labeled binary, 13 categories)
 %
-% Method: +CG = E3 with-graph, causal_only (7 intervention-validated edges),
-%   code+name format: "1.1(Disobey Task Specification) -> 3.3(...) (strength: X.XX)"
+% Methods:
+%   +CG = E3 with-graph, causal_only (7 intervention-validated edges),
+%         code+name format: "1.1(Disobey Task Specification) -> 3.3(...)"
+%   +GI = E4 graph-inject, causal_only, code+name format
+%         (2-pass: Pass 1 detects errors, Pass 2 injects outgoing edges only)
 %
 % Footnotes:
-%   * QwQ-32B uses enable_thinking; E3 shown (hurts vs baseline);
-%     E4 graph-inject achieves W-F1=17.17 / Macro-F1=13.64.
+%   * QwQ-32B uses enable_thinking; codename +GI not run.
 %   † Gemma-3-27B: codename format shown; code-only achieves W-F1=14.89.
-%   ‡ o1 on 100-trace stratified sample; not comparable to N=393.
 % ============================================================
 
 \begin{table*}[t]
@@ -23,25 +24,31 @@
 \toprule
 \textbf{Model} & \textbf{Method} & \textbf{W-F1} & \textbf{Macro-F1} \\
 \midrule
-\multirow{2}{*}{Mistral-Small-3.1-24B}
+\multirow{3}{*}{Mistral-Small-3.1-24B}
   & Baseline &        37.73  &        26.86  \\
-  & +CG      & \textbf{52.95} & \textbf{37.22} \\[3pt]
-\multirow{2}{*}{GPT-oss-20B}
+  & +CG      & \textbf{52.95} & \textbf{37.22} \\
+  & +GI      &        37.01  &        25.86  \\[3pt]
+\multirow{3}{*}{GPT-oss-120B}
+  & Baseline &        17.84  &        12.74  \\
+  & +CG      & \textbf{21.62} & \textbf{15.14} \\
+  & +GI      & \textbf{22.68} & \textbf{16.44} \\[3pt]
+\multirow{3}{*}{GPT-oss-20B}
   & Baseline &        17.66  &        12.47  \\
-  & +CG      & \textbf{18.72} & \textbf{13.14} \\[3pt]
-\multirow{2}{*}{QwQ-32B$^{*}$}
+  & +CG      & \textbf{18.72} & \textbf{13.14} \\
+  & +GI      & \textbf{18.84} & \textbf{14.00} \\[3pt]
+\multirow{3}{*}{QwQ-32B$^{*}$}
   & Baseline &        16.08  &        12.02  \\
-  & +CG      &        15.13  &        10.58  \\[3pt]
-\multirow{2}{*}{Gemma-3-27B-IT$^{\dagger}$}
+  & +CG      &        15.13  &        10.58  \\
+  & +GI      & \text{---}    & \text{---}    \\[3pt]
+\multirow{3}{*}{Gemma-3-27B-IT$^{\dagger}$}
   & Baseline &        14.19  &         8.27  \\
-  & +CG      &        13.23  & \textbf{9.91}  \\[3pt]
+  & +CG      &        13.23  & \textbf{9.91}  \\
+  & +GI      &        14.12  & \textbf{8.36}  \\[3pt]
 \midrule
-\multirow{2}{*}{GPT-4o}
+\multirow{3}{*}{GPT-4o}
   & Baseline &         8.94  &         6.18  \\
-  & +CG      & \textbf{14.10} & \textbf{10.33} \\[3pt]
-\multirow{2}{*}{o1$^{\ddagger}$}
-  & Baseline &         9.08  &         5.81  \\
-  & +CG      & \text{---}    & \text{---}    \\
+  & +CG      & \textbf{14.10} & \textbf{10.33} \\
+  & +GI      & \text{---}    & \text{---}    \\
 \bottomrule
 \end{tabular}
 \caption{%
@@ -49,17 +56,16 @@
   \textbf{W-F1}: weighted F1 (weighted by per-category support).
   \textbf{Macro-F1}: unweighted average F1 across all 13 categories.
   All metrics in \%.
-  \textbf{+CG}: static causal graph injection (E3) --- 7 intervention-validated
-  edges in code+name format prepended before yes/no questions.
+  \textbf{+CG}: static causal graph context prepended before yes/no questions (E3 with-graph).
+  \textbf{+GI}: 2-pass dynamic graph injection (E4): Pass~1 detects errors,
+  Pass~2 injects edges originating from detected errors only.
+  All graph conditions use 7 intervention-validated causal edges in code+name format.
   Bold: improvement over the model's own baseline.
   Horizontal rule separates open-weights (top) from closed-source (bottom) models.
   $^{*}$QwQ-32B uses chain-of-thought reasoning (\texttt{enable\_thinking});
-  E3 with-graph shown; E4 graph-inject achieves W-F1\,=\,17.17 / Macro-F1\,=\,13.64
-  (only model where E4\,$>$\,E3\,$>$\,baseline).
+  codename +GI not run.
   $^{\dagger}$Gemma-3-27B: code+name edge format shown; code-only format achieves
   W-F1\,=\,14.89 (code+name suppresses detection for this model).
-  $^{\ddagger}$o1 evaluated on a 100-trace stratified sample ($N{=}100$);
-  not directly comparable to full-dataset results; +CG not run.
   \text{---}: condition not run.%
 }
 \label{tab:main_results}
