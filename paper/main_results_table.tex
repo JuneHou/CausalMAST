@@ -11,7 +11,7 @@
 %         (2-pass: Pass 1 detects errors, Pass 2 injects outgoing edges only)
 %
 % Footnotes:
-%   * QwQ-32B uses enable_thinking; codename +GI not run.
+%   * QwQ-32B uses enable_thinking.
 %   † Gemma-3-27B: codename format shown; code-only achieves W-F1=14.89.
 % ============================================================
 
@@ -20,41 +20,43 @@
 \small
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.2}
-\begin{tabular}{l l rr}
+\begin{tabular}{l l rrrrr}
 \toprule
-\textbf{Model} & \textbf{Method} & \textbf{W-F1} & \textbf{Macro-F1} \\
+\textbf{Model} & \textbf{Method} & \textbf{W-F1} & \textbf{Macro-F1} & \textbf{Macro-P} & \textbf{Macro-R} & \textbf{Macro-Acc} \\
 \midrule
 \multirow{3}{*}{Mistral-Small-3.1-24B}
-  & Baseline &        37.73  &        26.86  \\
-  & +CG      & \textbf{52.95} & \textbf{37.22} \\
-  & +GI      &        37.01  &        25.86  \\[3pt]
+  & Baseline &        37.73   &        26.86   &        29.87   &        31.50   &        62.01  \\
+  & +CG      & \textbf{52.95} & \textbf{37.22} & \textbf{29.92} & \textbf{55.23} &        56.21  \\
+  & +GI      &        37.01   &        25.86   &        28.34   & \textbf{32.09} &        60.62  \\[3pt]
 \multirow{3}{*}{GPT-oss-120B}
-  & Baseline &        17.84  &        12.74  \\
-  & +CG      & \textbf{21.62} & \textbf{15.14} \\
-  & +GI      & \textbf{22.68} & \textbf{16.44} \\[3pt]
+  & Baseline &        17.84   &        12.74   &        26.28   &         9.47   &        67.02  \\
+  & +CG      & \textbf{21.62} & \textbf{15.14} & \textbf{28.36} & \textbf{12.47} &        66.18  \\
+  & +GI      & \textbf{22.68} & \textbf{16.44} & \textbf{28.23} & \textbf{15.18} &        64.98  \\[3pt]
 \multirow{3}{*}{GPT-oss-20B}
-  & Baseline &        17.66  &        12.47  \\
-  & +CG      & \textbf{18.72} & \textbf{13.14} \\
-  & +GI      & \textbf{18.84} & \textbf{14.00} \\[3pt]
+  & Baseline &        17.66   &        12.47   &        26.26   &         9.65   &        67.29  \\
+  & +CG      & \textbf{18.72} & \textbf{13.14} & \textbf{27.04} & \textbf{10.49} & \textbf{67.47} \\
+  & +GI      & \textbf{18.84} & \textbf{14.00} & \textbf{29.66} & \textbf{10.79} &        67.23  \\[3pt]
 \multirow{3}{*}{QwQ-32B$^{*}$}
-  & Baseline &        16.08  &        12.02  \\
-  & +CG      &        15.13  &        10.58  \\
-  & +GI      & \text{---}    & \text{---}    \\[3pt]
+  & Baseline &        16.08   &        12.02   &        28.46   &         9.02   &        66.80  \\
+  & +CG      &        15.13   &        10.58   & \textbf{28.61} &         7.48   & \textbf{68.15} \\
+  & +GI      &        13.69   &         9.80   & \textbf{29.13} &         6.66   & \textbf{68.17} \\[3pt]
 \multirow{3}{*}{Gemma-3-27B-IT$^{\dagger}$}
-  & Baseline &        14.19  &         8.27  \\
-  & +CG      &        13.23  & \textbf{9.91}  \\
-  & +GI      &        14.12  & \textbf{8.36}  \\[3pt]
+  & Baseline &        14.19   &         8.27   &        18.32   &         5.84   &        69.13  \\
+  & +CG      &        13.23   & \textbf{9.91}  & \textbf{27.18} & \textbf{6.42}  &        68.29  \\
+  & +GI      &        14.12   & \textbf{8.36}  & \textbf{19.48} &         5.82   &        69.09  \\[3pt]
 \midrule
 \multirow{3}{*}{GPT-4o}
-  & Baseline &         8.94  &         6.18  \\
-  & +CG      & \textbf{14.10} & \textbf{10.33} \\
-  & +GI      & \text{---}    & \text{---}    \\
+  & Baseline &        22.87   &        16.31   &        28.00   &        14.78   &        65.32  \\
+  & +CG      &        18.57   &        14.15   & \textbf{31.33} &        12.13   & \textbf{66.74} \\
+  & +GI      & \textbf{25.70} & \textbf{19.10} & \textbf{29.26} & \textbf{18.36} &        64.81  \\
 \bottomrule
 \end{tabular}
 \caption{%
   Main results on the MAST benchmark (393 AG2 traces, 13 error categories).
   \textbf{W-F1}: weighted F1 (weighted by per-category support).
   \textbf{Macro-F1}: unweighted average F1 across all 13 categories.
+  \textbf{Macro-P} / \textbf{Macro-R} / \textbf{Macro-Acc}: unweighted average
+  precision, recall, and per-category binary accuracy across the 13 categories.
   All metrics in \%.
   \textbf{+CG}: static causal graph context prepended before yes/no questions (E3 with-graph).
   \textbf{+GI}: 2-pass dynamic graph injection (E4): Pass~1 detects errors,
@@ -62,11 +64,9 @@
   All graph conditions use 7 intervention-validated causal edges in code+name format.
   Bold: improvement over the model's own baseline.
   Horizontal rule separates open-weights (top) from closed-source (bottom) models.
-  $^{*}$QwQ-32B uses chain-of-thought reasoning (\texttt{enable\_thinking});
-  codename +GI not run.
+  $^{*}$QwQ-32B uses chain-of-thought reasoning (\texttt{enable\_thinking}).
   $^{\dagger}$Gemma-3-27B: code+name edge format shown; code-only format achieves
-  W-F1\,=\,14.89 (code+name suppresses detection for this model).
-  \text{---}: condition not run.%
+  W-F1\,=\,14.89 (code+name suppresses detection for this model).%
 }
 \label{tab:main_results}
 \end{table*}
@@ -114,3 +114,4 @@ Baseline                  & 37.73          & 26.86 \\
 }
 \label{tab:ablation_methods}
 \end{table}
+

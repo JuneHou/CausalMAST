@@ -7,7 +7,7 @@ during holistic error detection — graph is passive context, not dynamic inject
 
 Two graph sources (both plain JSON from causal_graph/outputs/):
   --causal_only  — 7 intervention-validated edges from effect_edges.json (weight = abs(delta))
-  default        — bootstrap-stable edges from edge_stability.json with frequency >= threshold
+  default        — observational edges from suppes_graph.json with pr_delta >= threshold
 
 Usage (run from MAST/):
     CUDA_VISIBLE_DEVICES=4,5 python eval/run_eval_with_graph.py
@@ -31,7 +31,7 @@ from tqdm import tqdm
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODEL        = "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
-DEFAULT_EDGE_THRESHOLD = 0.5   # bootstrap stability frequency threshold
+DEFAULT_EDGE_THRESHOLD = 0.2   # min geomean score for observational edges
 
 _EVAL_DIR    = Path(__file__).resolve().parent
 _MAST_DIR    = _EVAL_DIR.parent
@@ -82,7 +82,7 @@ def load_graph_edges(
 
     causal_only=True  — intervention-validated edges from effect_edges.json (weight=abs(delta))
     default           — bootstrap-stable edges from edge_stability.json (weight=frequency)
-                        with frequency >= threshold
+                        with pr_delta >= threshold
     """
     if causal_only:
         with open(effect_edges) as f:
@@ -93,22 +93,13 @@ def load_graph_edges(
             if v.get("validated", False)
         ]
     else:
-        with open(stability_graph) as f:
-            data = json.load(f)
-        stable_pairs = {
-            (e["a"], e["b"])
-            for e in data["edges"]
-            if e["frequency"] >= threshold
-        }
         with open(suppes_graph) as f:
             suppes_data = json.load(f)
-        suppes_idx = {(e["a"], e["b"]): e for e in suppes_data["edges"]}
         edges = []
-        for a, b in stable_pairs:
-            s = suppes_idx.get((a, b))
-            if s:
-                score = math.sqrt(s["p_b_given_a"] * s["pr_delta"])
-                edges.append((a, b, score))
+        for e in suppes_data["edges"]:
+            score = math.sqrt(e["p_b_given_a"] * e["pr_delta"])
+            if score >= threshold:
+                edges.append((e["a"], e["b"], score))
 
     edges.sort(key=lambda x: -x[2])
     return edges
@@ -272,7 +263,7 @@ def main():
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated edges from effect_edges.json")
     ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD,
-                    help="Min bootstrap stability frequency for default mode (default: 0.5)")
+                    help="Min geomean score sqrt(P(B|A)*PR_delta) for observational edges (default: 0.2)")
     ap.add_argument("--stability_graph", type=str, default=None)
     ap.add_argument("--effect_edges", type=str, default=None)
     ap.add_argument("--suppes_graph", type=str, default=None)
@@ -292,7 +283,7 @@ def main():
     suppes_path    = Path(args.suppes_graph)    if args.suppes_graph    else DEFAULT_SUPPES_GRAPH
     edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path, suppes_path)
     graph_guidance = format_graph_guidance(edges, causal_only=args.causal_only)
-    mode_str = "causal_only" if args.causal_only else f"stability>={args.edge_threshold}"
+    mode_str = "causal_only" if args.causal_only else f"geomean>={args.edge_threshold}"
     print(f"Graph: {len(edges)} edges ({mode_str})")
     for src, dst, w in edges:
         print(f"  {src} → {dst}  ({w:.3f})")

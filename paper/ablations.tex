@@ -1,0 +1,54 @@
+
+% ============================================================
+% TABLE 3 — Step Annotation Coverage
+%
+% Pipeline: annotation/run_annotation.py, two-pass (GPT-4o, few_shot).
+% Input:    annotation_ag2_filtered.jsonl (N=393 traces)
+% Metric:   For each trace-level positive label, did the pipeline
+%           successfully assign a step-level location? (coverage recall)
+% Note:     False-alarm rate is structurally 0 — the pipeline only
+%           annotates step locations for error types already labeled
+%           positive at trace level.
+% ============================================================
+
+\begin{table}[t]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabular}{l l r r r}
+    \toprule
+    \textbf{Code} & \textbf{Category} & \textbf{N} & \textbf{Located} & \textbf{Cov.\,(\%)} \\
+    \midrule
+    1.1 & Disobey Task Specification       & 172 & 132 & 76.7 \\
+    1.2 & Disobey Role Specification       &   7 &   6 & 85.7 \\
+    1.3 & Step Repetition                  & 217 & 207 & 95.4 \\
+    1.4 & Loss of Conversation History     &  44 &  35 & 79.5 \\
+    1.5 & Unaware of Termination Conditions& 173 & 149 & 86.1 \\
+    \midrule
+    2.1 & Conversation Reset               &  29 &  22 & 75.9 \\
+    2.2 & Fail to Ask for Clarification    & 166 & 134 & 80.7 \\
+    2.3 & Task Derailment                  & 128 & 100 & 78.1 \\
+    2.4 & Information Withholding          &  21 &  12 & 57.1 \\
+    2.6 & Action-Reasoning Mismatch        & 276 & 195 & 70.7 \\
+    \midrule
+    3.1 & Premature Termination            & 128 & 106 & 82.8 \\
+    3.2 & Weak Verification                &  84 &  81 & 96.4 \\
+    3.3 & No or Incorrect Verification     & 115 & 100 & 87.0 \\
+    \midrule
+    \multicolumn{2}{l}{\textbf{Overall}} & \textbf{1560} & \textbf{1279} & \textbf{82.0} \\
+    \bottomrule
+    \end{tabular}
+    \caption{%
+      Step annotation coverage on the AG2 split ($N{=}393$ traces, GPT-4o annotator).
+      For each trace-level error instance, \textbf{Located} counts how many received
+      a step-level location from the two-pass annotation pipeline;
+      \textbf{Cov.} = Located\,/\,N.
+      Diffuse behaviors (2.4~Information Withholding, 2.6~Action-Reasoning Mismatch)
+      are hardest to pin to a single step; categories with clear onset signatures
+      (1.3~Step Repetition, 3.2~Weak Verification) reach near-complete coverage.
+      False-alarm rate is 0 across all categories by pipeline design.%
+    }
+    \label{tab:step_annotation}
+    \end{table}
+    

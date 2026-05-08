@@ -21,7 +21,9 @@ MAST replaces Gemini with GPT-4o and o1. Mistral is shared across both benchmark
 
 ## Experiment Status Matrix
 
-All graph experiments use causal_only edges (7 intervention-validated edges).
+causal_only experiments use 7 intervention-validated edges (abs(delta) score).
+Observational experiments use geomean ≥ 0.2 filter on suppes_graph.json (geomean score = sqrt(P(B|A)×PR_delta)).
+Both benchmarks (MAST + TRAIL) now use the same threshold semantics: geomean ≥ threshold.
 "code+name" = `1.1(Disobey Task Specification) -> 3.3(No or Incorrect Verification)  (strength: X.XX)`
 
 | Model | Baseline | +with-graph code+name | +graph-inject code+name | Notes |
@@ -29,7 +31,7 @@ All graph experiments use causal_only edges (7 intervention-validated edges).
 | Mistral-Small-24B | ✓ 0.3773 | ✓ **0.5295** | ✓ 0.3701 | vLLM; all done |
 | Gemma-3-27B | ✓ 0.1419 | ✓ 0.1323 | ✓ 0.1412 | vLLM; done |
 | GPT-oss 20B | ✓ 0.1766 | ✓ 0.1872 | ✓ 0.1884 | vLLM; done |
-| QwQ-32B | ✓ 0.1608 | ✓ 0.1513 | ✗ codename not run (T9); non-codename=0.1717 | vLLM |
+| QwQ-32B | ✓ 0.1608 | ✓ 0.1513 | ✓ 0.1369 (codename, thinking); non-codename=0.1717 | vLLM |
 | GPT-4o | ✓ 0.0894 | ✓ 0.1410 | ✗ not run (T2) | API |
 | o1 | ✓ 0.0908† | ✗ | ✗ | API; omitted from paper |
 
@@ -61,73 +63,36 @@ All graph experiments use causal_only edges (7 intervention-validated edges).
 
 ## Task List (Priority Order)
 
-### T9 — QwQ-32B: graph-inject codename + thinking (new run)
+### T10 — QwQ-32B: correlation experiments (Qwen-family representative)
 
-Existing QwQ +GI used `eval/thinking/run_eval_graph_inject.py` (non-codename).
-Need codename version via `full_run_eval_graph_inject.py` with `--enable_thinking`:
-
-```bash
-CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
-    --model <qwq_model_path> \
-    --model_tag QwQ-32B \
-    --causal_only \
-    --enable_thinking \
-    --output_dir outputs_think
-```
-
-Expected output: `outputs_think/QwQ-32B-yesno-graph-inject-codename-causal_only-thinking/`
-
-Score after run:
+Qwen3.6 underperformed QwQ in earlier runs, so QwQ is the Qwen-family stand-in
+for the correlation analysis. Run the observational-graph (geomean ≥ 0.2)
+versions of E3 and E4 on QwQ-32B and write outputs to `outputs_corr/`,
+matching the t0.2 runs already done for Mistral / GPT-oss / Gemma.
 
 ```bash
-python eval/calculate_scores_yesno.py \
-    --pred_dir outputs_think/QwQ-32B-yesno-graph-inject-codename-causal_only-thinking
-```
-
----
-
-### T10 — Mistral: +CG and +GI with t≥0.4 stability graph (new geomean scoring)
-
-Previous t0.5 runs used raw stability frequency as strength — now replaced with geomean(P(B|A), PR_delta).
-t≥0.4 covers 11/13 error types (adds 3.3 vs t≥0.5; 1.2 and 3.2 uncoverable at any threshold).
-14 edges at t≥0.4 vs 11 at t≥0.5.
-
-```bash
-# E3 +CG
+# E3: with-graph codename, observational t0.2, thinking
 CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_with_graph.py \
-    --edge_threshold 0.4 \
+    --model Qwen/QwQ-32B \
+    --model_tag QwQ-32B \
+    --edge_threshold 0.2 \
+    --enable_thinking \
     --output_dir outputs_corr
 
-# E4 +GI
+# E4: graph-inject codename, observational t0.2, thinking
 CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
-    --edge_threshold 0.4 \
+    --model Qwen/QwQ-32B \
+    --model_tag QwQ-32B \
+    --edge_threshold 0.2 \
+    --enable_thinking \
     --output_dir outputs_corr
+
+# Score both
+python eval/calculate_scores_yesno.py \
+    --pred_dir outputs_corr/QwQ-32B-yesno-with-graph-codename-t0.2-thinking
+python eval/calculate_scores_yesno.py \
+    --pred_dir outputs_corr/QwQ-32B-yesno-graph-inject-codename-t0.2-thinking
 ```
-
-Expected outputs:
-- `outputs_corr/mistralai-Mistral-Small-3.1-24B-v2-yesno-with-graph-codename-t0.4/`
-- `outputs_corr/mistralai-Mistral-Small-3.1-24B-v2-yesno-graph-inject-codename-t0.4/`
-
-Score after each run:
-```bash
-python eval/calculate_scores_yesno.py --pred_dir outputs_corr/<subdir>
-```
-
-Note: old t0.5 runs in `outputs_corr/` used raw frequency as strength — not comparable to new geomean scoring.
-
----
-
-### T2 (partial) — GPT-4o: graph-inject code+name (low priority)
-
-```bash
-python eval/full_run_eval_graph_inject_api.py \
-    --model openai/gpt-4o \
-    --causal_only \
-    --output_dir outputs_full_api
-```
-
-Expected output: `outputs_full_api/openai-gpt-4o-yesno-graph-inject-codename-causal_only/`
-Low priority: with-graph only got to 0.141; graph-inject unlikely to improve significantly.
 
 
 ## o1 Sampling Design
@@ -172,7 +137,7 @@ python eval/calculate_scores_yesno.py --pred_dir <output_dir>/<model_subdir>
 | Mistral-Small-24B | open-source | 0.3773 | **0.5295** | 0.3701 |
 | Gemma-3-27B | open-source | 0.1419 | 0.1323 | — |
 | GPT-oss 20B | open API | 0.1766 | 0.1872 | 0.1884 |
-| QwQ-32B | open thinking | 0.1608 | 0.1513 | **0.1717** |
+| QwQ-32B | open thinking | 0.1608 | 0.1513 | **0.1717** (non-codename); 0.1369 (codename) |
 | GPT-4o | closed-source | 0.0894 | 0.1410 | TBD |
 | o1 | closed thinking | 0.0908† | TBD | — |
 

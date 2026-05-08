@@ -37,7 +37,7 @@ load_dotenv(find_dotenv())
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODEL          = "openai/gpt-4o"
-DEFAULT_EDGE_THRESHOLD = 0.5
+DEFAULT_EDGE_THRESHOLD = 0.2   # min geomean score for observational edges
 
 _EVAL_DIR    = Path(__file__).resolve().parent
 _MAST_DIR    = _EVAL_DIR.parent
@@ -92,22 +92,13 @@ def load_graph_edges(
             if v.get("validated", False)
         ]
     else:
-        with open(stability_graph) as f:
-            data = json.load(f)
-        stable_pairs = {
-            (e["a"], e["b"])
-            for e in data["edges"]
-            if e["frequency"] >= threshold
-        }
         with open(suppes_graph) as f:
             suppes_data = json.load(f)
-        suppes_idx = {(e["a"], e["b"]): e for e in suppes_data["edges"]}
         edges = []
-        for a, b in stable_pairs:
-            s = suppes_idx.get((a, b))
-            if s:
-                score = math.sqrt(s["p_b_given_a"] * s["pr_delta"])
-                edges.append((a, b, score))
+        for e in suppes_data["edges"]:
+            score = math.sqrt(e["p_b_given_a"] * e["pr_delta"])
+            if score >= threshold:
+                edges.append((e["a"], e["b"], score))
     edges.sort(key=lambda x: -x[2])
     return edges
 
@@ -176,7 +167,9 @@ def get_prompt(trace_text: str, graph_guidance: str) -> str:
         "Multiple failure modes can and do co-occur in the same trace — be thorough and mark all that apply.\n"
         "Use a LIBERAL annotation standard: mark yes if there is any plausible indication of the failure mode,\n"
         "even if minor or partial. When in doubt, lean toward yes rather than no.\n"
-        "Human annotators marked failure modes broadly — absence of good practice counts as a failure.\n\n"
+        "Human annotators marked failure modes broadly — absence of good practice counts as a failure.\n"
+        "Every trace in this dataset contains AT LEAST 2 failure modes (median 3, range 2-12 out of 13). "
+        "An all-no response is wrong by construction; if you find yourself marking all no, re-examine the trace.\n\n"
         "Answer between the @@ symbols exactly as shown:\n"
         "*** begin of things you should answer *** @@\n"
         "A. Freeform text summary of the problems with the inefficiencies or failure modes in the trace: <summary>\n"
@@ -196,21 +189,32 @@ def get_prompt(trace_text: str, graph_guidance: str) -> str:
         "3.2 Weak Verification: <yes or no>\n"
         "3.3 No or Incorrect Verification: <yes or no>\n"
         "@@*** end of your answer ***\n\n"
+        "Disambiguation rules:\n"
+        "- 3.2 vs 3.3: Mark 3.2 yes ONLY if a verification step exists but is insufficient/cursory. "
+        "If no verification step exists at all, mark 3.3 yes (and 3.2 no). They are mutually exclusive — "
+        "do not mark both.\n"
+        "- 1.4 Loss of Conversation History: mark yes when an agent's later turn ignores, contradicts, or "
+        "asks for information that was already established earlier in the conversation.\n"
+        "- 2.1 Conversation Reset: mark yes when context appears wiped or an agent restarts the task as if "
+        "from scratch, dropping prior progress.\n\n"
         "An example answer is:\n"
-        "A. The task is not completed due to disobeying role specification as agents went rogue and started to chat with each other instead of completing the task. Agents derailed and verifier is not strong enough to detect it.\n"
+        "A. The task is not completed correctly. The user agent restated the problem mid-trace and the "
+        "solver re-derived earlier intermediate values from scratch, ignoring computations already produced. "
+        "The solver also stopped before the termination criterion was met. A verifier was invoked but only "
+        "checked surface formatting, not numerical correctness.\n"
         "B. no\n"
         "C.\n"
         "1.1 no\n"
         "1.2 no\n"
-        "1.3 no\n"
-        "1.4 no\n"
-        "1.5 no\n"
+        "1.3 yes\n"
+        "1.4 yes\n"
+        "1.5 yes\n"
         "2.1 no\n"
         "2.2 no\n"
-        "2.3 yes\n"
+        "2.3 no\n"
         "2.4 no\n"
-        "2.6 yes\n"
-        "3.1 no\n"
+        "2.6 no\n"
+        "3.1 yes\n"
         "3.2 yes\n"
         "3.3 no\n\n"
         "Here is the trace:\n"
@@ -327,7 +331,8 @@ def main():
                     help="Parallel API workers (default: 1; use 1 for o1/reasoning models)")
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated edges from effect_edges.json")
-    ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD)
+    ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD,
+                    help="Min geomean score sqrt(P(B|A)*PR_delta) for observational edges (default: 0.2)")
     ap.add_argument("--stability_graph", type=str, default=None)
     ap.add_argument("--effect_edges", type=str, default=None)
     ap.add_argument("--suppes_graph", type=str, default=None)
@@ -344,7 +349,7 @@ def main():
     suppes_path    = Path(args.suppes_graph)    if args.suppes_graph    else DEFAULT_SUPPES_GRAPH
     edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path, suppes_path)
     graph_guidance = format_graph_guidance(edges, causal_only=args.causal_only)
-    mode_str = "causal_only" if args.causal_only else f"stability>={args.edge_threshold}"
+    mode_str = "causal_only" if args.causal_only else f"geomean>={args.edge_threshold}"
     print(f"Graph: {len(edges)} edges ({mode_str})")
     for src, dst, w in edges:
         print(f"  {src}({MAST_NAMES[src]}) -> {dst}({MAST_NAMES[dst]})  ({w:.3f})")

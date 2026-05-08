@@ -1,0 +1,287 @@
+% ============================================================
+% Implementation section (EMNLP 2026)
+%
+% Describes the prompting pipelines used in the paper:
+%   * Baseline (no graph) yes/no judge
+%   * +CG  — static causal graph guidance (E3)  : full_run_eval_with_graph{,_api}.py
+%   * +GI  — two-pass dynamic graph injection (E4) : full_run_eval_graph_inject{,_api}.py
+%   * Who&When adaptation                        : baselines/who&when/run_who_and_when_vllm.py
+%
+% Intended to slot in as Section "Implementation" / "Experimental Setup".
+% ============================================================
+
+\section{Implementation}
+\label{sec:implementation}
+
+We implement causal-graph-guided trace judging on top of a standard
+\textsc{yes/no} multi-label LLM-as-judge. The judge consumes the full agent
+trace and emits an independent binary decision for each of the thirteen
+\textsc{mast} categories (1.1\textendash 1.5, 2.1\textendash 2.4, 2.6,
+3.1\textendash 3.3). We compare four prompting conditions on the same 393
+filtered \textsc{ag2} traces \citep{cemri2025whymast}: a no-graph baseline,
+two graph-conditioned variants we propose (\textsc{+CG} and \textsc{+GI}),
+and the Who\&When attribution prompts adapted to our taxonomy
+\citep{yin2025whoandwhen}. All conditions share the same task definitions,
+exemplars, output schema, and parser so that gains can be attributed to the
+prompting strategy rather than to scaffolding differences.
+
+\subsection{Causal Graph Construction}
+\label{ssec:graph}
+
+The graph $\mathcal{G}=(V,E)$ used for conditioning has the thirteen
+\textsc{mast} categories as nodes. We construct $\mathcal{G}$ in five
+stages on the 393 \textsc{ag2} traces of \textsc{mast}, going from
+trace-level co-occurrences to a small set of intervention-validated
+directed edges.
+
+\paragraph{Stage 0 — onset extraction.}
+For each annotated trace and each of the thirteen categories we record
+the rank of the earliest step at which the category is observed; if the
+category is absent the onset is undefined. The output is a per-trace
+onset table $O \in (\mathbb{N}\cup\{\bot\})^{n\times 13}$ with
+$n{=}393$, written to \texttt{data/onsets.jsonl}. All subsequent stages
+operate on $O$, so the temporal evidence is exactly the relative ordering
+of category onsets within a trace, never the raw text.
+
+\paragraph{Stage 1 — Suppes probabilistic-causation screen.}
+\citet{suppes1970probabilistic} requires a genuine cause to (i)~precede
+its effect in time and (ii)~raise its conditional probability. We
+operationalise this on $O$ for every ordered pair
+$(a,b)$, $a\!\neq\!b$, by computing
+\begin{equation*}
+\mathrm{prec}(a,b) \!=\! \tfrac{|\{i: O_{i,a}{<}O_{i,b}\}|}
+{|\{i: O_{i,a},O_{i,b} \text{ both defined}\}|},
+\end{equation*}
+\begin{equation*}
+\Delta^{\mathrm{PR}}_{ab} \!=\! P(b\,|\,a) - P(b\,|\,\neg a),
+\end{equation*}
+and retain the pair as a candidate edge iff
+$\mathrm{prec}(a,b)\geq 0.55$, $\Delta^{\mathrm{PR}}_{ab}\geq 0.05$, and
+the joint count $|\{i: a,b \text{ both present}\}|\geq 3$. Each surviving
+edge is also assigned a geometric-mean score
+$s^{\mathrm{geo}}_{ab}=\sqrt{P(b\,|\,a)\cdot \Delta^{\mathrm{PR}}_{ab}}$
+that we reuse later as an observational strength. This stage produces
+\texttt{suppes\_graph.json} with $43$ candidate edges
+($|V|{=}13$, $n_{\mathrm{traces}}{=}393$).
+
+\paragraph{Stage 2 — \textsc{capri} pruning via BIC-penalised DAG search.}
+The Suppes screen is purely pairwise and over-produces edges through
+indirect chains and shared upstream causes. We follow
+\textsc{capri}~\citep{ramazzotti2017capri,bonchi2016capri} and prune the
+candidate set to a directed acyclic graph by hill-climbing the Bayesian
+Information Criterion: starting from the empty graph, at each step we
+add the candidate edge that yields the largest decrease in BIC, refusing
+any addition that would create a cycle, until no remaining candidate
+improves the score. The fitted parent sets are scored under independent
+Bernoulli local distributions on the binary
+``category-present-in-trace'' variables. This stage retains $14$ edges
+in \texttt{capri\_graph.json} and is the structural backbone of the
+graph (forming, e.g.,
+$2.2 \!\to\! \{1.4, 1.5, 2.3, 2.4, 2.6\}$ and
+$2.3 \!\to\! \{2.4, 3.1\}$).
+
+\paragraph{Stage 3 — bootstrap stability.}
+To assess how reliably each pairwise pattern survives sample variation
+we draw $B{=}100$ trace-level non-parametric bootstrap resamples
+(\texttt{seed}=42), re-run Stages 1\textendash 2 on each, and assign every
+edge a stability score
+$\rho(a,b) = \tfrac{1}{B}\sum_{r=1}^{B}\mathds{1}[(a,b)\in
+\mathcal{G}^{(r)}]$.
+Aggregating across resamples produces $68$ edges that appear at least
+once; we report the full distribution in \texttt{edge\_stability.json}
+and use $\rho$ as a confidence indicator for downstream visualisation.
+The strongest edges by stability are
+$1.1\!\to\!2.6$ ($\rho{=}0.95$),
+$2.2\!\to\!2.3$ ($\rho{=}0.89$),
+$2.3\!\to\!3.1$ ($\rho{=}0.79$),
+$1.4\!\to\!1.5$ ($\rho{=}0.76$),
+$2.2\!\to\!2.6$ ($\rho{=}0.72$), and
+$1.3\!\to\!1.5$ ($\rho{=}0.69$).
+
+\paragraph{Stage 4 — shuffle control.}
+As a negative control, we randomly permute onset ranks within each
+trace $S{=}50$ times (\texttt{seed}=42) and re-run the Suppes screen on
+each shuffled copy. The original screen retains $43$ edges; the shuffled
+screens retain on average only $31.2$ edges (range $[22, 39]$), and the
+edges that do survive shuffling cluster on rare categories (mostly
+spurious arrows incident to 2.4 \emph{Information Withholding} and 2.1
+\emph{Conversation Reset}, which have very small support). None of the
+\textsc{capri}-retained edges appears as a frequent shuffled artefact,
+indicating that the directed structure is not an artefact of the
+marginal frequencies alone.
+
+\paragraph{Stage 5 — counterfactual intervention validation.}
+Probabilistic-causation and DAG search establish ordering and
+conditional dependence but do not by themselves rule out unobserved
+common causes. We therefore subject each \textsc{capri} edge to an
+LLM-driven $\mathrm{do}(A{=}0)$ test, adapted from the patching
+pipeline of \textsc{trail} \citep{cemri2025whymast}. For each edge
+$a\!\to\!b$:
+(i)~we filter to traces where $a$ is annotated and resolve the step at
+which $a$ occurs (\emph{Judge~A});
+(ii)~we ask an LLM patcher to rewrite that step minimally so that $a$
+no longer holds while preserving the rest of the trace
+(\texttt{patch\_generator\_llm.py}; postcheck rejects patches whose
+rewrite violates the patch contract);
+(iii)~we re-run the agent continuation from the patched step
+(\texttt{rerun\_harness.py}) to obtain a counterfactual trace;
+(iv)~a second judge (\emph{Judge~B}) labels what happened to $b$ in
+the counterfactual --- one of \{\textit{disappeared, weakened, delayed,
+unchanged, emerged, not-observable}\}.
+Aggregating across valid interventions for the edge gives a
+patch-induced rate change
+\[
+\Delta_{ab} \;=\; P(b\!\mid\!\mathrm{do}(a{=}0)) \;-\; P(b),
+\]
+and we declare the edge \emph{intervention-validated} iff $\Delta_{ab}$
+falls outside a placebo band
+$[\mu_{\mathrm{plc}}-2\sigma_{\mathrm{plc}},\,\mu_{\mathrm{plc}}+2\sigma_{\mathrm{plc}}]$
+estimated by patching \emph{unrelated} categories on the same traces
+(\texttt{effect\_aggregator.py}). Across the $14$ \textsc{capri} edges
+we obtain $230$ A-instances, $219/230$ patches that pass the postcheck,
+$172/188$ resolutions accepted by Judge~A, and $654$ edge-pair
+evaluations. Of the $14$ candidate edges, $7$ are validated:
+$1.1\!\to\!2.6$ ($\Delta{=}{-}0.13$, $n{=}63$),
+$1.3\!\to\!1.5$ ($\Delta{=}{-}0.08$, $n{=}86$),
+$1.4\!\to\!1.5$ ($\Delta{=}{-}0.10$, $n{=}10$),
+$2.1\!\to\!3.3$ ($\Delta{=}{-}1.00$, $n{=}1$),
+$2.2\!\to\!1.5$ ($\Delta{=}{-}0.30$, $n{=}30$),
+$2.2\!\to\!2.4$ ($\Delta{=}{-}0.50$, $n{=}2$), and
+$2.3\!\to\!3.1$ ($\Delta{=}{-}0.43$, $n{=}7$). All seven exhibit
+\emph{negative} $\Delta_{ab}$, consistent with the causal reading that
+suppressing $a$ reduces the downstream rate of $b$.
+
+\paragraph{Final graph used for prompting.}
+$\mathcal{G}=(V,E)$ takes the seven validated edges as $E$ and assigns
+edge strength $w_{ab}=|\Delta_{ab}|$. The remaining outputs
+(\texttt{suppes\_graph.json}, \texttt{capri\_graph.json},
+\texttt{edge\_stability.json}, \texttt{controls\_shuffle.json}) are
+retained for ablations and visualisation but are not used by the
+prompts in \S\ref{ssec:prompting}. We use the code+name string format
+\texttt{1.1(Disobey Task Specification)\,$\rightarrow$\,3.3(No or
+Incorrect Verification)} when serialising edges into the prompt; an
+ablation in Table~\ref{tab:ablation_methods} shows that inlining the
+human-readable name of each node is consistently better than passing
+codes alone.
+
+\subsection{Trace Serialisation and Prompting}
+\label{ssec:prompting}
+
+Every trace is serialised by enumerating its $T$ steps as
+\texttt{[step\_id]\textbackslash n<content>} blocks separated by blank
+lines; the same routine is shared across all four conditions. The judge
+prompt prepends the \textsc{mast} taxonomy definitions and the few-shot
+exemplars released with the benchmark, optionally followed by graph
+guidance, and concludes with a fixed answer template enclosed in
+\texttt{@@}\ldots\texttt{@@} delimiters that asks for (i) a free-form
+summary, (ii) a binary task-success label, and (iii) one yes/no token per
+\textsc{mast} category. A single shared regex parser extracts the thirteen
+binary predictions from the delimited block for every condition;
+unparseable categories default to \textsc{no}.
+
+\paragraph{Baseline.} The baseline prompt omits the graph block entirely
+and is otherwise identical, providing a controlled reference point for the
+two graph conditions.
+
+\paragraph{\textsc{+CG}: static causal guidance.} For the with-graph
+condition we insert a single block listing all $|E|=7$ validated edges in
+descending order of $w_{ab}$ between the few-shot exemplars and the trace.
+The block names the edges as \emph{intervention-validated causal patterns},
+explains that ``removing $a$ causally reduces $b$'s occurrence rate,'' and
+instructs the judge that ``when you identify error type $A$, actively look
+for error type $B$.'' The trace is then judged in a single call.
+
+\paragraph{\textsc{+GI}: two-pass dynamic injection.} The graph-injection
+variant is a more selective use of $\mathcal{G}$ in which graph edges are
+revealed to the judge \emph{only after} an initial detection pass, and only
+for the categories that the detection pass actually triggered. Pass~1 runs
+the no-graph baseline prompt and produces a 13-bit prediction
+$\hat{y}^{(1)}\!\in\!\{0,1\}^{13}$. We then compute, for every category
+$b$, an aggregated incoming score
+\[
+s(b) \;=\; \sum_{(a,b)\in E,\; \hat{y}^{(1)}_a=1}\!\!w_{ab},
+\]
+and form the filtered edge set
+$E^{\star}=\{(a,b)\in E : \hat{y}^{(1)}_a=1,\; \hat{y}^{(1)}_b=0,\;
+s(b)>\tau\}$, with $\tau\!=\!0.1$ throughout this paper. If
+$E^{\star}\neq\emptyset$, Pass~2 sends a targeted second prompt that
+(i)~reports the Pass~1 detections in natural language, (ii)~lists only the
+edges in $E^{\star}$ together with their strengths, and (iii)~asks the
+judge to decide \textsc{yes}/\textsc{no} \emph{only} for the destination
+nodes $\{b : (a,b)\!\in\!E^{\star}\}$. The final prediction is the
+monotone merge $\hat{y}_c=\hat{y}^{(1)}_c \vee \hat{y}^{(2)}_c$, so that
+Pass~2 can only upgrade \textsc{no}$\to$\textsc{yes} for graph-implicated
+targets; it can never overwrite a Pass~1 detection. Traces that produce no
+detections in Pass~1, or whose detections lie outside the source set of
+$E$, skip the second call entirely. Empirically Pass~2 fires on the large
+majority of traces but only a small number receive an upgrade, which is
+the intended behaviour: the graph is consulted as a focused
+\emph{re-reading} signal rather than as background scaffolding.
+
+\subsection{Who\&When Baselines}
+\label{ssec:wnw}
+
+For comparison with prior work on agentic failure attribution, we adapt
+the Who\&When prompting strategies of \citet{yin2025whoandwhen} to the
+\textsc{mast} multi-label setting. Their original task asks
+\emph{which agent} (Who) failed at \emph{which step} (When); we keep the
+\emph{which} axis but project ``which agent'' onto ``which of the thirteen
+\textsc{mast} failure modes,'' since \textsc{mast} ground truth is
+trace-level multi-label rather than agent-level single-label. We
+re-implement two of their strategies on top of the same trace serialiser,
+taxonomy block, and parser used above:
+
+\begin{itemize}\itemsep2pt
+\item \textbf{W1 (All-at-Once).} The full trace is shown to the judge in a
+single call and the judge emits all thirteen yes/no decisions jointly. The
+prompt differs from our baseline only in its instruction wording, which
+follows the All-at-Once template of \citet{yin2025whoandwhen} and
+emphasises that the labels are independent.
+\item \textbf{W2 (Step-by-Step).} The judge is queried once per step with
+a cumulative-history prefix containing all earlier steps (truncated to
+$80$k characters by dropping the oldest steps when needed). For each
+step it emits a 13-bit local label set scoped to ``direct evidence in the
+current step.'' Because \textsc{mast} ground truth is trace-level, we
+OR-aggregate the per-step labels: a category is predicted positive at
+trace level iff at least one step is predicted positive for it. There is
+no early-exit heuristic; every step in every trace is processed.
+\end{itemize}
+
+\subsection{Models and Inference}
+\label{ssec:models}
+
+We evaluate five open-weight models served through
+\textsc{vLLM} \citep{kwon2023vllm} ---
+\textsc{Mistral-Small-3.1-24B-Instruct-2503},
+\textsc{GPT-oss-20B}, \textsc{GPT-oss-120B},
+\textsc{QwQ-32B}, and \textsc{Gemma-3-27B-IT} ---
+together with two API-served closed models, \textsc{GPT-4o} and
+\textsc{o1}, accessed through \textsc{LiteLLM} \citep{berriai2024litellm}.
+Open-weight inference uses tensor-parallel sharding auto-derived from
+\texttt{CUDA\_VISIBLE\_DEVICES}, \texttt{max\_model\_len}=108k tokens,
+\texttt{gpu\_memory\_utilization}=0.9, batch size $8$, and greedy decoding
+(\texttt{temperature}=0, \texttt{max\_tokens}=8k for the with-graph and
+graph-injection prompts, $2$k for Who\&When). For reasoning-tuned models
+(\textsc{QwQ-32B}, \textsc{o1}) we set \texttt{enable\_thinking}=\textsc{True}
+and strip the \texttt{<think>\ldots</think>} block before parsing; both
+the explicit-pair and the orphan-closing-tag patterns produced by vLLM's
+chat template are handled. API calls follow the same temperature and
+max-token settings, with up to five exponential-backoff retries on
+rate-limit errors, and \texttt{reasoning\_effort=high} for o-series
+models.
+
+\subsection{Reproducibility}
+
+The four pipelines are released as
+\texttt{eval/full\_run\_eval\_with\_graph.py},
+\texttt{eval/full\_run\_eval\_with\_graph\_api.py},
+\texttt{eval/full\_run\_eval\_graph\_inject.py}, and
+\texttt{eval/full\_run\_eval\_graph\_inject\_api.py}, with the Who\&When
+adaptation in \texttt{baselines/who\&when/run\_who\_and\_when\_vllm.py}.
+Each script is idempotent: predictions are written one JSON file per
+trace (named by zero-padded record index), already-completed records are
+skipped on re-launch, and all metrics in
+Tables~\ref{tab:main_results}\textendash\ref{tab:ablation_methods} are
+recomputed by a single shared scoring script
+(\texttt{eval/calculate\_scores\_yesno.py}) so that the four conditions
+are directly comparable.
