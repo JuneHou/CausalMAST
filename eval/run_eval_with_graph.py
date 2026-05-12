@@ -97,7 +97,7 @@ def load_graph_edges(
             suppes_data = json.load(f)
         edges = []
         for e in suppes_data["edges"]:
-            score = math.sqrt(e["p_b_given_a"] * e["pr_delta"])
+            score = math.sqrt(e["precedence"] * e["pr_delta"])
             if score >= threshold:
                 edges.append((e["a"], e["b"], score))
 
@@ -114,23 +114,42 @@ def format_category_lookup() -> str:
     return "\n".join(lines)
 
 
-def format_graph_guidance(edges: List[Tuple[str, str, float]]) -> str:
-    """Format edges as a static guidance block for injection into the prompt."""
+def format_graph_guidance(edges: List[Tuple[str, str, float]], causal_only: bool = True) -> str:
+    """Format edges as a static guidance block for injection into the prompt.
+
+    causal_only=True  -> intervention-validated framing (weights = |Δ|)
+    causal_only=False -> observational/correlation framing (weights = geomean)
+    """
     if not edges:
         return ""
-    lines = [
-        format_category_lookup(),
-        "CAUSAL ERROR PATTERNS (data-driven, from prior trace analysis):",
-        "The following causal relationships between MAST error types have been statistically",
-        "validated. When you identify an error of type A in the trace, actively look for",
-        "errors of type B, as B has been found to causally follow A.",
-        "Higher strength values indicate stronger causal association.",
-        "",
-        "Format: [Source code] -> [Target code]  (strength: X.XX)",
-        "",
-    ]
-    for src, dst, w in edges:
-        lines.append(f"  {src} -> {dst}  (strength: {w:.2f})")
+    if causal_only:
+        lines = [
+            format_category_lookup(),
+            "CAUSAL ERROR PATTERNS (intervention-validated):",
+            "The following edges were validated via counterfactual patching experiments.",
+            "When you identify error type A, actively look for error type B,",
+            "as removing A causally reduces B's occurrence rate.",
+            "Higher values indicate stronger causal effect.",
+            "",
+            "Format: [Source code] -> [Target code]  (causal effect: X.XX)",
+            "",
+        ]
+        for src, dst, w in edges:
+            lines.append(f"  {src} -> {dst}  (causal effect: {w:.2f})")
+    else:
+        lines = [
+            format_category_lookup(),
+            "CORRELATED ERROR PATTERNS (observational, precedence-filtered):",
+            "The following error pairs consistently co-occur with A preceding B across traces.",
+            "Score = geometric mean of precedence P(A precedes B | both occur) and probability-raising delta P(B|A) − P(B|¬A).",
+            "When you identify error type A, consider also checking for error type B.",
+            "Higher values indicate stronger observational association.",
+            "",
+            "Format: [Source code] -> [Target code]  (observational score: X.XX)",
+            "",
+        ]
+        for src, dst, w in edges:
+            lines.append(f"  {src} -> {dst}  (observational score: {w:.2f})")
     lines.append("")
     return "\n".join(lines)
 
@@ -263,7 +282,7 @@ def main():
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated edges from effect_edges.json")
     ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD,
-                    help="Min geomean score sqrt(P(B|A)*PR_delta) for observational edges (default: 0.2)")
+                    help="Min geomean score sqrt(precedence*PR_delta) for observational edges (default: 0.2)")
     ap.add_argument("--stability_graph", type=str, default=None)
     ap.add_argument("--effect_edges", type=str, default=None)
     ap.add_argument("--suppes_graph", type=str, default=None)

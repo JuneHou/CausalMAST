@@ -17,7 +17,7 @@ from collections import defaultdict
 import math
 
 
-def local_score_cpt(node, parent_list, X, mode_to_idx, n_traces, criterion="BIC", cache=None):
+def local_score_cpt(node, parent_list, X, mode_to_idx, n_traces, criterion="AIC", cache=None):
     """
     Local BIC/AIC for one node using CPT (conditional probability table).
     Binary node B with parents pa: 2^|pa| configs, each has MLE P(B=1|config) with Laplace smoothing.
@@ -70,7 +70,7 @@ def edges_to_parents(edges):
     return parents_of
 
 
-def graph_total_score(edges, modes, X, mode_to_idx, n_traces, criterion="BIC", cache=None):
+def graph_total_score(edges, modes, X, mode_to_idx, n_traces, criterion="AIC", cache=None):
     """Total score = sum of local CPT scores. Optionally use and fill cache."""
     parents_of = edges_to_parents(edges)
     total = 0.0
@@ -152,7 +152,7 @@ def parents_of_in(new_edges, node):
     return sorted(a for a, b in new_edges if b == node)
 
 
-def hill_climb(candidate_set, modes, X, mode_to_idx, n_traces, criterion="BIC", max_parents=None, max_iters=500):
+def hill_climb(candidate_set, modes, X, mode_to_idx, n_traces, criterion="AIC", max_parents=None, max_iters=500):
     """
     Hill-climb with incremental score: cache local_score(node, parent_set);
     for each neighbor only rescore affected nodes.
@@ -211,7 +211,7 @@ def main():
     ap.add_argument("--out_path", default="outputs/capri_graph.json", help="Output pruned graph path")
     ap.add_argument("--max_parents", type=int, default=None,
                     help="Optional cap on parents per node (default: no cap)")
-    ap.add_argument("--criterion", choices=["BIC", "AIC"], default="BIC", help="Score criterion (default: BIC)")
+    ap.add_argument("--criterion", choices=["BIC", "AIC"], default="AIC", help="Score criterion (default: AIC)")
     ap.add_argument("--max_iters", type=int, default=500, help="Max hill-climbing iterations (default: 500)")
     args = ap.parse_args()
 

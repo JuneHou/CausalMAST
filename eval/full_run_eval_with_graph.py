@@ -7,7 +7,7 @@ instead of codes-only. The separate category lookup table is omitted since names
 are now inline in each edge line.
 
 Usage (run from MAST/):
-    CUDA_VISIBLE_DEVICES=4,5 python eval/code_name/run_eval_with_graph.py --causal_only
+    CUDA_VISIBLE_DEVICES=4,5 python eval/full_run_eval_with_graph.py --causal_only
 """
 
 import os
@@ -68,10 +68,38 @@ MAST_NAMES = {
 def load_graph_edges(
     threshold: float = DEFAULT_EDGE_THRESHOLD,
     causal_only: bool = False,
+    corr_threshold: float = 1.0,
     stability_graph: Path = DEFAULT_STABILITY_GRAPH,
     effect_edges: Path = DEFAULT_EFFECT_EDGES,
     suppes_graph: Path = DEFAULT_SUPPES_GRAPH,
+    random_edges: bool = False,
+    random_seed: int = 42,
+    random_n: int = 11,
 ) -> List[Tuple[str, str, float]]:
+    """
+    Four mutually-exclusive branches (mirrors TRAIL's
+    benchmarking/eval/run_eval_graph_inject_vllm.py:load_graph_edges):
+
+      causal_only=True       -> validated causal edges only, weight=|Δ|.
+      corr_threshold < 1.0   -> UNION: (Suppes geomean ≥ corr_threshold)
+                                 ∪ (validated causal edges, regardless of geomean).
+                                 Weight = geomean for all edges.
+      random_edges=True      -> sample random_n directed pairs from MAST_MODES
+                                excluding Suppes-screened edges. Null-graph control.
+      else (default)         -> pure Suppes geomean ≥ threshold (no validated union).
+                                 Weight = geomean.
+    """
+    if random_edges:
+        import random as _rnd
+        with open(suppes_graph) as f:
+            suppes_data = json.load(f)
+        suppes_keys = {(e["a"], e["b"]) for e in suppes_data["edges"]}
+        nodes = sorted(MAST_MODES)
+        candidate = [(a, b) for a in nodes for b in nodes if a != b and (a, b) not in suppes_keys]
+        rnd = _rnd.Random(random_seed)
+        sampled = rnd.sample(candidate, min(random_n, len(candidate)))
+        return [(a, b, 1.0) for a, b in sampled]
+
     if causal_only:
         with open(effect_edges) as f:
             data = json.load(f)
@@ -80,23 +108,56 @@ def load_graph_edges(
             for v in data["edges"].values()
             if v.get("validated", False)
         ]
+    elif corr_threshold < 1.0:
+        with open(suppes_graph) as f:
+            suppes_data = json.load(f)
+        # Validated causal edges (forced into the union regardless of geomean)
+        causal_keys: set = set()
+        with open(effect_edges) as f:
+            ef = json.load(f)
+        for v in ef["edges"].values():
+            if v.get("validated", False):
+                causal_keys.add((v["a"], v["b"]))
+        edges = []
+        for e in suppes_data["edges"]:
+            a, b = e["a"], e["b"]
+            score = math.sqrt(e["precedence"] * e["pr_delta"])
+            if (a, b) in causal_keys or score >= corr_threshold:
+                edges.append((a, b, score))
     else:
         with open(suppes_graph) as f:
             suppes_data = json.load(f)
         edges = []
         for e in suppes_data["edges"]:
-            score = math.sqrt(e["p_b_given_a"] * e["pr_delta"])
+            score = math.sqrt(e["precedence"] * e["pr_delta"])
             if score >= threshold:
                 edges.append((e["a"], e["b"], score))
     edges.sort(key=lambda x: -x[2])
     return edges
 
 
-def format_graph_guidance(edges: List[Tuple[str, str, float]], causal_only: bool = True) -> str:
+def format_graph_guidance(
+    edges: List[Tuple[str, str, float]],
+    causal_only: bool = True,
+    random_edges: bool = False,
+) -> str:
     """Format edges as a static guidance block using code(name) format."""
     if not edges:
         return ""
-    if causal_only:
+    if random_edges:
+        lines = [
+            "RANDOM ERROR PATTERN BASELINE (uncalibrated):",
+            "The following edges are sampled uniformly at random from directed category pairs",
+            "outside the Suppes-screened graph. They carry no probabilistic interpretation and",
+            "serve as a control for graph-structure ablations.",
+            "When you identify error type A, consider also checking for error type B.",
+            "",
+            "Format: [code(name)] -> [code(name)]",
+            "",
+        ]
+        for src, dst, _ in edges:
+            lines.append(f"  {src}({MAST_NAMES[src]}) -> {dst}({MAST_NAMES[dst]})")
+    elif causal_only:
         lines = [
             "CAUSAL ERROR PATTERNS (intervention-validated):",
             "The following edges were validated via counterfactual patching experiments.",
@@ -115,7 +176,7 @@ def format_graph_guidance(edges: List[Tuple[str, str, float]], causal_only: bool
         lines = [
             "CORRELATED ERROR PATTERNS (observational, precedence-filtered):",
             "The following error pairs consistently co-occur with A preceding B across agent traces.",
-            "Score = geometric mean of P(B|A) and probability-raising delta P(B|A)−P(B|¬A).",
+            "Score = geometric mean of precedence P(A precedes B | both occur) and probability-raising delta P(B|A)−P(B|¬A).",
             "When you identify error type A, consider also checking for error type B.",
             "Higher values indicate stronger observational association.",
             "",
@@ -252,13 +313,23 @@ def main():
     ap.add_argument("--output_dir", default="outputs_full")
     ap.add_argument("--batch_size", type=int, default=8)
     ap.add_argument("--max_tokens", type=int, default=8000)
-    ap.add_argument("--max_model_len", type=int, default=108000)
-    ap.add_argument("--gpu_memory_utilization", type=float, default=0.9,
+    ap.add_argument("--max_model_len", type=int, default=128000)
+    ap.add_argument("--gpu_memory_utilization", type=float, default=0.8,
                     help="Fraction of GPU memory vLLM may use per device (default: 0.9)")
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated edges from effect_edges.json")
+    ap.add_argument("--corr_threshold", type=float, default=1.0,
+                    help="If < 1.0, use UNION ablation: (Suppes geomean ≥ τ) ∪ "
+                         "(validated causal edges). Mirrors TRAIL's --corr_threshold. "
+                         "Mutually exclusive with --causal_only.")
     ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD,
-                    help="Min geomean score sqrt(P(B|A)*PR_delta) for observational edges (default: 0.2)")
+                    help="Min geomean score sqrt(precedence*PR_delta) for observational edges (default: 0.2)")
+    ap.add_argument("--random_edges", action="store_true",
+                    help="Random-N baseline: sample edges from MAST taxonomy minus Suppes graph.")
+    ap.add_argument("--random_seed", type=int, default=42,
+                    help="Seed for --random_edges sampling.")
+    ap.add_argument("--random_n", type=int, default=11,
+                    help="Number of random edges to sample (default 11, matches causal-only).")
     ap.add_argument("--stability_graph", type=str, default=None)
     ap.add_argument("--effect_edges", type=str, default=None)
     ap.add_argument("--suppes_graph", type=str, default=None)
@@ -276,9 +347,33 @@ def main():
     stability_path = Path(args.stability_graph) if args.stability_graph else DEFAULT_STABILITY_GRAPH
     effect_path    = Path(args.effect_edges)    if args.effect_edges    else DEFAULT_EFFECT_EDGES
     suppes_path    = Path(args.suppes_graph)    if args.suppes_graph    else DEFAULT_SUPPES_GRAPH
-    edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path, suppes_path)
-    graph_guidance = format_graph_guidance(edges, causal_only=args.causal_only)
-    mode_str = "causal_only" if args.causal_only else f"geomean>={args.edge_threshold}"
+    mode_count = sum([args.causal_only, args.corr_threshold < 1.0, args.random_edges])
+    if mode_count > 1:
+        ap.error("--causal_only, --corr_threshold, and --random_edges are mutually exclusive")
+    edges = load_graph_edges(
+        threshold=args.edge_threshold,
+        causal_only=args.causal_only,
+        corr_threshold=args.corr_threshold,
+        stability_graph=stability_path,
+        effect_edges=effect_path,
+        suppes_graph=suppes_path,
+        random_edges=args.random_edges,
+        random_seed=args.random_seed,
+        random_n=args.random_n,
+    )
+    # Causal-only -> intervention-validated. corr/edge_threshold paths -> observational.
+    is_causal_prose = args.causal_only
+    graph_guidance = format_graph_guidance(
+        edges, causal_only=is_causal_prose, random_edges=args.random_edges,
+    )
+    if args.random_edges:
+        mode_str = f"random{args.random_n}_seed{args.random_seed} (null-graph control)"
+    elif args.causal_only:
+        mode_str = "causal_only"
+    elif args.corr_threshold < 1.0:
+        mode_str = f"corr>={args.corr_threshold} (Suppes ∪ validated)"
+    else:
+        mode_str = f"geomean>={args.edge_threshold}"
     print(f"Graph: {len(edges)} edges ({mode_str})")
     for src, dst, w in edges:
         print(f"  {src} → {dst}  ({w:.3f})")
@@ -292,7 +387,14 @@ def main():
             records.append(r)
     print(f"\nLoaded {len(records)} traces")
 
-    graph_tag = "causal_only" if args.causal_only else f"t{args.edge_threshold}"
+    if args.random_edges:
+        graph_tag = f"random{args.random_n}_seed{args.random_seed}"
+    elif args.causal_only:
+        graph_tag = "causal_only"
+    elif args.corr_threshold < 1.0:
+        graph_tag = f"corr{args.corr_threshold}"
+    else:
+        graph_tag = f"t{args.edge_threshold}"
     model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
     thinking_suffix = "-thinking" if args.enable_thinking else ""
     out_dir   = os.path.join(args.output_dir, f"{model_tag}-yesno-with-graph-codename-{graph_tag}{thinking_suffix}")

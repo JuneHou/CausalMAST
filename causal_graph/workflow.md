@@ -91,16 +91,19 @@ python CAPRI/2_suppes_screen.py \
 
 > `--min_joint 3` is appropriate for 393 traces. Raise to 5 if you want stricter edges.
 
-### Step 3 — CAPRI pruning (BIC-based DAG search)
+### Step 3 — CAPRI pruning (AIC-based DAG search)
 
-Prunes the Suppes candidate edges via hill-climbing with BIC score.
+Prunes the Suppes candidate edges via hill-climbing with AIC score.
+AIC is preferred over BIC here because the trace corpus is moderately sized
+and BIC's stronger complexity penalty risks discarding true causal edges
+with limited observational support (matches the trail-benchmark choice).
 
 ```bash
 python CAPRI/3_capri_prune.py \
   --onsets_path data/onsets.jsonl \
   --suppes_path outputs/suppes_graph.json \
   --out_path outputs/capri_graph.json \
-  --criterion BIC
+  --criterion AIC
 ```
 
 ### Step 4 — Bootstrap stability
@@ -260,7 +263,7 @@ causal_graph/
 The causal analysis targets the AG2 subset specifically, based on three criteria:
 
 **1. Sample size** — AG2 has 393 annotated traces, the largest in the MAST corpus.
-CAPRI (BIC-penalized structure learning) requires sufficient co-occurrence counts per
+CAPRI (AIC-penalized structure learning) requires sufficient co-occurrence counts per
 edge to survive pruning; other frameworks fall well below this threshold.
 
 **2. Structural regularity** — AG2 traces consist of a small number of discrete,

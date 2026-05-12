@@ -58,9 +58,14 @@ $(a,b)$, $a\!\neq\!b$, by computing
 and retain the pair as a candidate edge iff
 $\mathrm{prec}(a,b)\geq 0.55$, $\Delta^{\mathrm{PR}}_{ab}\geq 0.05$, and
 the joint count $|\{i: a,b \text{ both present}\}|\geq 3$. Each surviving
-edge is also assigned a geometric-mean score
-$s^{\mathrm{geo}}_{ab}=\sqrt{P(b\,|\,a)\cdot \Delta^{\mathrm{PR}}_{ab}}$
-that we reuse later as an observational strength. This stage produces
+edge is also assigned a geometric-mean score over the two graded Suppes
+statistics,
+$s^{\mathrm{geo}}_{ab}=\sqrt{\mathrm{prec}(a,b)\cdot \Delta^{\mathrm{PR}}_{ab}}$,
+that we reuse later as an observational strength. The geomean uses
+precedence and $\Delta^{\mathrm{PR}}$ rather than $P(b\,|\,a)$ and
+$\Delta^{\mathrm{PR}}$ because the latter pair are not independent
+($P(b\,|\,a)$ is one component of $\Delta^{\mathrm{PR}}$); see the
+graph-richness ablation for the full justification. This stage produces
 \texttt{suppes\_graph.json} with $43$ candidate edges
 ($|V|{=}13$, $n_{\mathrm{traces}}{=}393$).
 

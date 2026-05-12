@@ -1,20 +1,29 @@
 """
-visualize_graphs.py — Visualize Suppes and CAPRI causal graphs.
+visualize_graphs.py — Visualize MAST validated causal graph (and optionally
+the corr ≥ τ ablation graph).
 
-Produces two side-by-side figures saved as:
-    outputs/graph_suppes.png
-    outputs/graph_capri.png
-    outputs/graph_both.png   (side-by-side comparison)
+Default output: `outputs/graph_causal.png` — intervention-validated causal
+graph, weights = |Δ(A→B)|. This is what the +CG / +GI+SI causal-only
+inference conditions inject into prompts.
 
-Edge weight shown is pr_delta = P(B|A) - P(B|~A) from the Suppes screen.
-CAPRI edges are a BIC-pruned subset of Suppes edges; their pr_delta is
-looked up from the Suppes edge list.
+Optional corr ≥ τ graph: pass `--corr_threshold τ` (and `--suppes`) to
+additionally render `outputs/graph_corr_t<τ>.png` showing the edge set used
+in the corr-threshold ablation — Suppes edges with geomean ≥ τ unioned with
+the validated causal edges, weighted by geomean.
 
 Usage (from causal_graph/):
-    conda run -n /data/wang/junh/envs/causal python visualize_graphs.py
-    python visualize_graphs.py  --suppes outputs/suppes_graph.json \
-                                --capri   outputs/capri_graph.json \
-                                --out_dir outputs
+
+    # default — causal-only figure
+    python visualize_graphs.py \
+        --effect_edges outputs/interventions/effect_edges.json \
+        --out_dir      outputs
+
+    # also render corr ≥ 0.2 ablation graph (for appendix)
+    python visualize_graphs.py \
+        --effect_edges  outputs/interventions/effect_edges.json \
+        --suppes        outputs/suppes_graph.json \
+        --corr_threshold 0.2 \
+        --out_dir       outputs
 """
 
 import json
@@ -64,6 +73,10 @@ GROUP_NAMES = {
 
 ALL_NODES = list(NODE_LABELS.keys())
 
+# Descriptive names (no numeric prefix), used as node labels in the plot.
+# Derived from NODE_LABELS values which are formatted "<id>\n<name>".
+NODE_NAMES = {k: v.split("\n", 1)[1] for k, v in NODE_LABELS.items()}
+
 
 # ---------------------------------------------------------------------------
 # Fixed layout: 3-column grid by group, y-spaced evenly within group
@@ -88,33 +101,56 @@ def make_positions():
 # ---------------------------------------------------------------------------
 # Load data
 # ---------------------------------------------------------------------------
-def load_suppes(path):
-    with open(path) as f:
+def load_validated_causal(effect_edges_path):
+    """Causal-only graph from intervention validation.
+    Weight = |Δ(A→B)|. Only validated=True edges are returned."""
+    with open(effect_edges_path) as f:
         data = json.load(f)
-    # Build lookup: (a, b) -> edge dict
-    lookup = {}
-    for e in data["edges"]:
-        lookup[(e["a"], e["b"])] = e
-    return data["edges"], lookup
+    out = []
+    for v in data["edges"].values():
+        if not v.get("validated"):
+            continue
+        d = v.get("delta")
+        if d is None:
+            continue
+        out.append({"a": v["a"], "b": v["b"], "weight": abs(d)})
+    return out
 
 
-def load_capri(path, suppes_lookup):
-    with open(path) as f:
+def load_corr_graph(suppes_path, validated_pairs, corr_threshold):
+    """Reproduce the corr ≥ τ injection set used at inference:
+    Suppes edges with geomean ≥ τ ∪ validated causal edges, weighted by geomean.
+    """
+    with open(suppes_path) as f:
         data = json.load(f)
-    edges = []
+    out = []
+    seen = set()
     for e in data["edges"]:
-        key = (e["a"], e["b"])
-        pr_delta = suppes_lookup[key]["pr_delta"] if key in suppes_lookup else 0.0
-        edges.append({"a": e["a"], "b": e["b"], "pr_delta": pr_delta})
-    return edges
+        geomean = (max(0.0, e.get("p_b_given_a", 0.0)) *
+                   max(0.0, e.get("pr_delta", 0.0))) ** 0.5
+        if geomean >= corr_threshold:
+            out.append({"a": e["a"], "b": e["b"], "weight": geomean})
+            seen.add((e["a"], e["b"]))
+    suppes_lookup = {(e["a"], e["b"]): e for e in data["edges"]}
+    for (a, b) in validated_pairs:
+        if (a, b) in seen:
+            continue
+        s = suppes_lookup.get((a, b))
+        if s is None:
+            continue
+        geomean = (max(0.0, s.get("p_b_given_a", 0.0)) *
+                   max(0.0, s.get("pr_delta", 0.0))) ** 0.5
+        out.append({"a": a, "b": b, "weight": geomean})
+    return out
 
 
 # ---------------------------------------------------------------------------
 # Build NetworkX graph
 # ---------------------------------------------------------------------------
-def build_graph(edges, weight_key="pr_delta"):
+def build_graph(edges, weight_key="weight"):
     G = nx.DiGraph()
-    G.add_nodes_from(ALL_NODES)
+    # Only add nodes that are endpoints of edges. Pass --show_isolated to
+    # include the full ALL_NODES taxonomy as isolated nodes.
     for e in edges:
         G.add_edge(e["a"], e["b"], weight=e[weight_key])
     return G
@@ -124,6 +160,7 @@ def build_graph(edges, weight_key="pr_delta"):
 # Draw one graph
 # ---------------------------------------------------------------------------
 def draw_graph(ax, G, pos, title, weight_range=(0.05, 0.87),
+               weight_label="weight",
                show_edge_labels=True, label_threshold=0.0):
     ax.set_xlim(-0.35, 2.35)
     ax.set_ylim(-0.08, 1.05)
@@ -145,15 +182,15 @@ def draw_graph(ax, G, pos, title, weight_range=(0.05, 0.87),
     nx.draw_networkx_nodes(
         G, pos, ax=ax,
         node_color=node_colors,
-        node_size=1400,
+        node_size=2400,
         alpha=0.92,
     )
 
-    # Node labels (short)
-    short_labels = {n: n for n in G.nodes()}
+    # Node labels — descriptive error-type names, not numeric IDs
+    name_labels = {n: NODE_NAMES.get(n, n) for n in G.nodes()}
     nx.draw_networkx_labels(
-        G, pos, labels=short_labels, ax=ax,
-        font_size=9, font_weight="bold", font_color="white",
+        G, pos, labels=name_labels, ax=ax,
+        font_size=6.5, font_weight="bold", font_color="white",
     )
 
     # Edges: color and thickness by weight
@@ -204,7 +241,7 @@ def draw_graph(ax, G, pos, title, weight_range=(0.05, 0.87),
                                 norm=mcolors.Normalize(vmin=w_min, vmax=w_max))
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax, fraction=0.025, pad=0.02, aspect=25)
-    cbar.set_label("pr_delta  P(B|A) − P(B|¬A)", fontsize=8)
+    cbar.set_label(weight_label, fontsize=8)
     cbar.ax.tick_params(labelsize=7)
 
 
@@ -226,86 +263,88 @@ def add_legend(ax):
 # ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--suppes",  default="outputs/suppes_graph.json")
-    parser.add_argument("--capri",   default="outputs/capri_graph.json")
-    parser.add_argument("--out_dir", default="outputs")
+    parser.add_argument("--effect_edges", default="outputs/interventions/effect_edges.json",
+                        help="effect_edges.json (drives the causal-only plot)")
+    parser.add_argument("--suppes",       default=None,
+                        help="suppes_graph.json — only required if --corr_threshold is set")
+    parser.add_argument("--corr_threshold", type=float, default=None,
+                        help="If set, also render the corr ≥ τ ablation graph "
+                             "(Suppes edges with geomean ≥ τ ∪ validated causal). "
+                             "Requires --suppes.")
+    parser.add_argument("--show_isolated", action="store_true",
+                        help="Include all 13 MAST taxonomy categories as nodes "
+                             "(isolated if no validated edge connects them).")
+    parser.add_argument("--out_dir",      default="outputs")
     args = parser.parse_args()
 
     os.makedirs(args.out_dir, exist_ok=True)
 
-    suppes_edges, suppes_lookup = load_suppes(args.suppes)
-    capri_edges = load_capri(args.capri, suppes_lookup)
+    causal_edges = load_validated_causal(args.effect_edges)
+    G_causal = build_graph(causal_edges)
 
-    G_suppes = build_graph(suppes_edges)
-    G_capri  = build_graph(capri_edges)
+    corr_edges = None
+    G_corr = None
+    if args.corr_threshold is not None:
+        if not args.suppes:
+            parser.error("--corr_threshold requires --suppes")
+        validated_pairs = {(e["a"], e["b"]) for e in causal_edges}
+        corr_edges = load_corr_graph(args.suppes, validated_pairs, args.corr_threshold)
+        G_corr = build_graph(corr_edges)
+
+    # Optionally include the full taxonomy as isolated nodes
+    if args.show_isolated:
+        G_causal.add_nodes_from(ALL_NODES)
+        if G_corr is not None:
+            G_corr.add_nodes_from(ALL_NODES)
 
     pos = make_positions()
 
-    all_weights = [e["pr_delta"] for e in suppes_edges]
-    w_range = (min(all_weights), max(all_weights))
+    causal_weights = [e["weight"] for e in causal_edges]
+    causal_range = (min(causal_weights), max(causal_weights)) if causal_weights else (0, 1)
 
-    # ---- Individual: Suppes ----
-    fig, ax = plt.subplots(figsize=(9, 7))
-    draw_graph(ax, G_suppes, pos,
-               title=f"Suppes Probabilistic Causation Graph  ({len(suppes_edges)} edges)",
-               weight_range=w_range,
-               show_edge_labels=False)   # too many edges — skip labels
-    add_legend(ax)
-    fig.tight_layout()
-    out_s = os.path.join(args.out_dir, "graph_suppes.png")
-    fig.savefig(out_s, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved {out_s}")
+    CAUSAL_LABEL = r"|Δ(A→B)|  (intervention-validated effect)"
 
-    # ---- Individual: CAPRI ----
+    # ---- Validated causal-only graph (default) ----
     fig, ax = plt.subplots(figsize=(9, 7))
-    draw_graph(ax, G_capri, pos,
-               title=f"CAPRI Pruned DAG  ({len(capri_edges)} edges, BIC criterion)",
-               weight_range=w_range,
+    draw_graph(ax, G_causal, pos,
+               title=f"Validated Causal Graph  ({len(causal_edges)} edges, weight=|Δ|)",
+               weight_range=causal_range,
+               weight_label=CAUSAL_LABEL,
                show_edge_labels=True,
                label_threshold=0.0)
     add_legend(ax)
     fig.tight_layout()
-    out_c = os.path.join(args.out_dir, "graph_capri.png")
+    out_c = os.path.join(args.out_dir, "graph_causal.png")
     fig.savefig(out_c, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"Saved {out_c}")
+    print(f"Saved {out_c}  ({len(causal_edges)} validated edges, weight = |Δ|)")
 
-    # ---- Side-by-side comparison ----
-    fig, axes = plt.subplots(1, 2, figsize=(18, 7))
-    draw_graph(axes[0], G_suppes, pos,
-               title=f"Suppes Graph  ({len(suppes_edges)} edges)",
-               weight_range=w_range,
-               show_edge_labels=False)
-    draw_graph(axes[1], G_capri, pos,
-               title=f"CAPRI Pruned DAG  ({len(capri_edges)} edges)",
-               weight_range=w_range,
-               show_edge_labels=True,
-               label_threshold=0.0)
-    add_legend(axes[1])
+    # ---- Optional: corr ≥ τ ablation graph ----
+    if corr_edges is not None:
+        corr_weights = [e["weight"] for e in corr_edges]
+        corr_range = (min(corr_weights), max(corr_weights)) if corr_weights else (0, 1)
+        SUPPES_LABEL = r"geomean = $\sqrt{P(B|A)\cdot \Delta\mathrm{PR}}$"
 
-    fig.suptitle(
-        "MAST-AG2 Causal Error Graphs\n"
-        "Edge weight = pr_delta [P(B|A) − P(B|¬A)]  |  Nodes colored by MAST error group",
-        fontsize=12, y=1.01,
-    )
-    fig.tight_layout()
-    out_b = os.path.join(args.out_dir, "graph_both.png")
-    fig.savefig(out_b, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"Saved {out_b}")
+        fig, ax = plt.subplots(figsize=(9, 7))
+        draw_graph(ax, G_corr, pos,
+                   title=(f"Corr ≥ {args.corr_threshold} Ablation Graph  "
+                          f"({len(corr_edges)} edges, weight=geomean)"),
+                   weight_range=corr_range,
+                   weight_label=SUPPES_LABEL,
+                   show_edge_labels=False)
+        add_legend(ax)
+        fig.tight_layout()
+        tag = f"{args.corr_threshold}".replace(".", "p")
+        out_corr = os.path.join(args.out_dir, f"graph_corr_t{tag}.png")
+        fig.savefig(out_corr, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved {out_corr}  ({len(corr_edges)} edges; "
+              f"Suppes geomean ≥ {args.corr_threshold} ∪ validated)")
 
     # ---- Print edge summary ----
-    print(f"\nSuppes edges ({len(suppes_edges)}) — sorted by pr_delta:")
-    for e in sorted(suppes_edges, key=lambda x: -x["pr_delta"])[:10]:
-        print(f"  {e['a']} → {e['b']}  pr_delta={e['pr_delta']:.4f}  "
-              f"P(B|A)={e['p_b_given_a']:.3f}  P(B|¬A)={e['p_b_given_not_a']:.3f}")
-    print(f"\nCAPRI edges ({len(capri_edges)}) — sorted by pr_delta:")
-    for e in sorted(capri_edges, key=lambda x: -x["pr_delta"]):
-        src = suppes_lookup.get((e["a"], e["b"]), {})
-        print(f"  {e['a']} → {e['b']}  pr_delta={e['pr_delta']:.4f}  "
-              f"P(B|A)={src.get('p_b_given_a', 0):.3f}  "
-              f"P(B|¬A)={src.get('p_b_given_not_a', 0):.3f}")
+    print(f"\nValidated causal edges ({len(causal_edges)}) — sorted by |Δ|:")
+    for e in sorted(causal_edges, key=lambda x: -x["weight"]):
+        print(f"  {e['a']} → {e['b']}  |Δ|={e['weight']:.4f}")
 
 
 if __name__ == "__main__":

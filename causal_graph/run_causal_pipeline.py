@@ -57,8 +57,8 @@ def main():
                     help="Suppes: min traces where both A and B co-occur (default: 3)")
 
     # CAPRI parameters
-    ap.add_argument("--criterion", choices=["BIC", "AIC"], default="BIC",
-                    help="CAPRI pruning criterion (default: BIC)")
+    ap.add_argument("--criterion", choices=["BIC", "AIC"], default="AIC",
+                    help="CAPRI pruning criterion (default: AIC)")
     ap.add_argument("--max_parents", type=int, default=None,
                     help="CAPRI: max parents per node (default: no limit)")
 

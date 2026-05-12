@@ -65,7 +65,7 @@ def run_suppes_and_prune_on_sample(sample_onsets, temp_dir, sample_id,
         "--onsets_path", sample_path,
         "--suppes_path", suppes_out,
         "--out_path", capri_out,
-        "--criterion", str(capri_params.get("criterion", "BIC")),
+        "--criterion", str(capri_params.get("criterion", "AIC")),
     ]
     if capri_params.get("max_parents") is not None:
         capri_cmd.extend(["--max_parents", str(capri_params["max_parents"])])

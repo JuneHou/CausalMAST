@@ -87,9 +87,13 @@ def topological_layout(G: nx.DiGraph, hierarchy_path: str = None) -> dict:
         levels = None
 
     if levels is None:
-        # Fallback: longest path layering
+        levels = {}
+
+    # Backfill any node missing from the hierarchy file via longest-path layering
+    missing = [n for n in G.nodes() if n not in levels]
+    if missing:
         for node in G.nodes():
-            G.nodes[node]["layer"] = 0
+            G.nodes[node]["layer"] = levels.get(node, 0)
         try:
             for node in nx.topological_sort(G):
                 for succ in G.successors(node):
@@ -99,7 +103,8 @@ def topological_layout(G: nx.DiGraph, hierarchy_path: str = None) -> dict:
                     )
         except nx.NetworkXUnfeasible:
             pass
-        levels = {n: G.nodes[n].get("layer", 0) for n in G.nodes()}
+        for n in missing:
+            levels[n] = G.nodes[n].get("layer", 0)
 
     # Group nodes by level
     from collections import defaultdict

@@ -1,25 +1,44 @@
 % ============================================================
-% ABLATION — Graph Richness on MAST (causal-only vs. geomean >= 0.2)
+% ABLATION — Graph Richness on MAST (causal-only + corr sweep + random)
 %
 % Purpose: parallel to the TRAIL ablation. Show how expanding the
-% injected graph from the 7 intervention-validated causal edges to
-% the larger geomean >= 0.2 set affects both +CG (one-pass static)
-% and +GI (two-pass injection) on the MAST open-source panel.
+% injected graph from the 11 intervention-validated causal edges to
+% the larger Suppes-screened observational sets affects both +CG
+% (one-pass static) and +GI (two-pass injection) on the MAST
+% open-source panel. The sweep is anchored against a 11-edge
+% random-non-Suppes null-graph control to verify that gains are
+% structural, not driven by edge count alone.
 %
-% Sources (N=393 traces in every cell):
-%   causal-only +CG : outputs_full/*-yesno-with-graph-codename-causal_only-metrics.json
-%   causal-only +GI : outputs_full/*-yesno-graph-inject-codename-causal_only-metrics.json
-%   t0.2        +CG : outputs_corr/*-yesno-with-graph-codename-t0.2-metrics.json
-%   t0.2        +GI : outputs_corr/*-yesno-graph-inject(-codename)-t0.2-metrics.json
+% Threshold score (matches TRAIL's ablation):
+%   score(A->B) = sqrt(precedence(A,B) * Delta_PR(A,B))
+% where precedence and Delta_PR = P(B|A) - P(B|~A) are the two
+% graded Suppes statistics surviving screening; the third Suppes
+% signal (temporal precedence cutoff) is a binary directional gate
+% applied upstream during graph construction.
+%
+% Sweep points (N=393 traces in every cell):
+%   causal-only (11 edges)         -- intervention-validated anchor
+%   random-11   (11 edges, seed=42)-- null-graph control
+%   corr 0.60   (~18 union edges)  -- just above causal-only count
+%   corr 0.50   (~25 union edges)  -- mid-sweep
+%   corr 0.40   (~29 union edges)  -- saturating end
+%
+% Source paths (placeholder; populated after re-running under the
+% new score sqrt(precedence * pr_delta)):
+%   *-yesno-{with-graph,graph-inject}-codename-causal_only-metrics.json
+%   *-yesno-{with-graph,graph-inject}-codename-random11_seed42-metrics.json
+%   *-yesno-{with-graph,graph-inject}-codename-corr0.<TAU>-metrics.json
 %   Closed-source models (GPT-4o) deliberately excluded — ablation
 %   scoped to open-source panel only.
 %
+% NOTE: The data rows below were produced under the previous score
+% sqrt(P(B|A) * pr_delta) at t=0.2 and are therefore stale. They
+% will be replaced after re-running the sweep under the new score.
 % Mistral checkpoint identity verified: re-running causal-only +CG
 % under the default --model (Instruct-2503, output saved to
-% outputs_test/) reproduces W-F1 = 51.16, within ~1.8 pts of the
-% v2-tagged baseline (52.95). The two runs use the same upstream
-% weights; "v2" was a cosmetic --model_tag string only. The two
-% Mistral cells in the table below are therefore directly comparable.
+% outputs_test/) reproduces W-F1 = 51.16, within ~3.8 pts of the
+% current causal-only +CG (47.31). The two runs use the same
+% upstream weights; "v2" was a cosmetic --model_tag string only.
 % ============================================================
 
 \begin{table*}[t]
@@ -38,7 +57,7 @@
 & & W-F1 & Macro-F1 & W-F1 & Macro-F1 & W-F1 & Macro-F1 \\
 \midrule
 \multirow{2}{*}{Mistral-Small-3.1-24B}
-  & +CG & \textbf{52.95} & \textbf{37.22} & 37.47 & 25.25 & $-15.48$ & $-11.97$ \\
+  & +CG & \textbf{47.31} & \textbf{32.95} & 37.47 & 25.25 & $-9.84$ & $-7.70$ \\
   & +GI & 37.01 & 25.86 & \textbf{38.88} & \textbf{27.19} & $+1.87$ & $+1.33$ \\[3pt]
 \multirow{2}{*}{GPT-oss-120B}
   & +CG & 21.62 & 15.14 & \textbf{23.62} & \textbf{17.06} & $+2.00$ & $+1.92$ \\
@@ -56,13 +75,16 @@
 \end{tabular}
 \caption{%
   Ablation: graph-richness on MAST ($N{=}393$ AG2 traces, all metrics in \%).
-  \textbf{causal-only}: 7 intervention-validated CAPRI-BIC edges.
-  \textbf{geomean ${\geq}0.2$}: larger observational edge set passing the
-  Suppes geometric-mean filter at $t{=}0.2$.
+  \textbf{causal-only}: 11 intervention-validated CAPRI-BIC edges.
+  \textbf{corr ${\geq}\tau$}: Suppes-screened edges whose geomean score
+  $\sqrt{\mathrm{precedence}\cdot\Delta_{\mathrm{PR}}} \geq \tau$, unioned
+  with the 11 causal edges; sweep points $\tau\in\{0.60,0.50,0.40\}$ give
+  union sizes $\{18,25,29\}$. \textbf{random-11}: 11 directed edges sampled
+  uniformly (seed $42$) from the 13-category MAST taxonomy excluding all
+  Suppes pairs; null-graph control, count-matched to causal-only.
   \textbf{+CG}: one-pass static graph injected before yes/no questions.
   \textbf{+GI}: two-pass dynamic injection — Pass~1 detects errors,
   Pass~2 injects only edges originating from detected errors.
-  $\Delta$ is geomean ${\geq}0.2$ minus causal-only.
   Bold: best within each row pair (within model, within method).
   Ablation scoped to the open-source panel; GPT-4o omitted.
   $^{\dagger}$QwQ-32B is run with thinking enabled. The
@@ -85,14 +107,14 @@
 %    graph size.
 %
 % 2. +CG behaves inconsistently with the larger graph:
-%      Mistral  : -15.48 W-F1 (catastrophic regression)
+%      Mistral  : -9.84 W-F1  (substantial regression)
 %      GPT-120B : +2.00
 %      GPT-20B  : +0.26 (essentially flat)
 %      Gemma    : +0.53
 %    Confirms that the one-pass static-graph variant does not scale
 %    to richer edge sets. Important for the paper because Mistral
 %    +CG (causal-only) is the headline winner of the MAST main
-%    table at 52.95 W-F1 -- demonstrating that this peak is
+%    table at 47.31 W-F1 -- demonstrating that this peak is
 %    fragile to graph expansion.
 %
 % 3. Cross-benchmark consistency: on TRAIL (open-source panel),
@@ -110,7 +132,7 @@
 %
 % 5. Implication: on MAST, the canonical method choice should depend
 %    on graph richness:
-%      - Causal-only: +CG dominates (Mistral 52.95 vs +GI 37.01).
+%      - Causal-only: +CG dominates (Mistral 47.31 vs +GI 37.01).
 %      - Larger graph: +GI dominates (Mistral +GI 38.88 vs +CG 37.47).
 %    The cleanest story for the paper is "+GI is robust across graph
 %    sizes; +CG is best only with the small validated-edge set."

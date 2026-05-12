@@ -97,7 +97,7 @@ def load_graph_edges(
             suppes_data = json.load(f)
         edges = []
         for e in suppes_data["edges"]:
-            score = math.sqrt(e["p_b_given_a"] * e["pr_delta"])
+            score = math.sqrt(e["precedence"] * e["pr_delta"])
             if score >= threshold:
                 edges.append((e["a"], e["b"], score))
     edges.sort(key=lambda x: -x[2])
@@ -336,7 +336,7 @@ def main():
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated edges from effect_edges.json")
     ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD,
-                    help="Min geomean score sqrt(P(B|A)*PR_delta) for observational edges (default: 0.2)")
+                    help="Min geomean score sqrt(precedence*PR_delta) for observational edges (default: 0.2)")
     ap.add_argument("--propagation_threshold", type=float, default=DEFAULT_PROPAGATION_THRESHOLD,
                     help="Min boosted score to trigger Pass 2 for a target category (default: 0.1)")
     ap.add_argument("--stability_graph", type=str, default=None)

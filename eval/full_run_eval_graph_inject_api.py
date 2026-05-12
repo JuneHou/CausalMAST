@@ -78,10 +78,22 @@ MAST_NAMES = {
 def load_graph_edges(
     threshold: float = DEFAULT_EDGE_THRESHOLD,
     causal_only: bool = False,
+    corr_threshold: float = 1.0,
     stability_graph: Path = DEFAULT_STABILITY_GRAPH,
     effect_edges: Path = DEFAULT_EFFECT_EDGES,
     suppes_graph: Path = DEFAULT_SUPPES_GRAPH,
 ) -> List[Tuple[str, str, float]]:
+    """
+    Three mutually-exclusive branches (mirrors TRAIL's
+    benchmarking/eval/run_eval_graph_inject_vllm.py:load_graph_edges):
+
+      causal_only=True       -> validated causal edges only, weight=|Δ|.
+      corr_threshold < 1.0   -> UNION: (Suppes geomean ≥ corr_threshold)
+                                 ∪ (validated causal edges, regardless of geomean).
+                                 Weight = geomean for all edges.
+      else (default)         -> pure Suppes geomean ≥ threshold (no validated union).
+                                 Weight = geomean.
+    """
     if causal_only:
         with open(effect_edges) as f:
             data = json.load(f)
@@ -90,12 +102,27 @@ def load_graph_edges(
             for v in data["edges"].values()
             if v.get("validated", False)
         ]
+    elif corr_threshold < 1.0:
+        with open(suppes_graph) as f:
+            suppes_data = json.load(f)
+        causal_keys: set = set()
+        with open(effect_edges) as f:
+            ef = json.load(f)
+        for v in ef["edges"].values():
+            if v.get("validated", False):
+                causal_keys.add((v["a"], v["b"]))
+        edges = []
+        for e in suppes_data["edges"]:
+            a, b = e["a"], e["b"]
+            score = math.sqrt(e["precedence"] * e["pr_delta"])
+            if (a, b) in causal_keys or score >= corr_threshold:
+                edges.append((a, b, score))
     else:
         with open(suppes_graph) as f:
             suppes_data = json.load(f)
         edges = []
         for e in suppes_data["edges"]:
-            score = math.sqrt(e["p_b_given_a"] * e["pr_delta"])
+            score = math.sqrt(e["precedence"] * e["pr_delta"])
             if score >= threshold:
                 edges.append((e["a"], e["b"], score))
     edges.sort(key=lambda x: -x[2])
@@ -418,8 +445,12 @@ def main():
                     help="Parallel API workers (default: 1; use 1 for o1/reasoning models)")
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated edges from effect_edges.json")
+    ap.add_argument("--corr_threshold", type=float, default=1.0,
+                    help="If < 1.0, use UNION ablation: (Suppes geomean ≥ τ) ∪ "
+                         "(validated causal edges). Mirrors TRAIL's --corr_threshold. "
+                         "Mutually exclusive with --causal_only.")
     ap.add_argument("--edge_threshold", type=float, default=DEFAULT_EDGE_THRESHOLD,
-                    help="Min geomean score sqrt(P(B|A)*PR_delta) for observational edges (default: 0.2)")
+                    help="Min geomean score sqrt(precedence*PR_delta) for observational edges (default: 0.2)")
     ap.add_argument("--propagation_threshold", type=float, default=DEFAULT_PROPAGATION_THRESHOLD,
                     help="Min boosted score to trigger Pass 2 for a target category (default: 0.1)")
     ap.add_argument("--stability_graph", type=str, default=None)
@@ -435,8 +466,22 @@ def main():
     stability_path = Path(args.stability_graph) if args.stability_graph else DEFAULT_STABILITY_GRAPH
     effect_path    = Path(args.effect_edges)    if args.effect_edges    else DEFAULT_EFFECT_EDGES
     suppes_path    = Path(args.suppes_graph)    if args.suppes_graph    else DEFAULT_SUPPES_GRAPH
-    edges = load_graph_edges(args.edge_threshold, args.causal_only, stability_path, effect_path, suppes_path)
-    mode_str = "causal_only" if args.causal_only else f"geomean>={args.edge_threshold}"
+    if args.causal_only and args.corr_threshold < 1.0:
+        ap.error("--causal_only and --corr_threshold are mutually exclusive")
+    edges = load_graph_edges(
+        threshold=args.edge_threshold,
+        causal_only=args.causal_only,
+        corr_threshold=args.corr_threshold,
+        stability_graph=stability_path,
+        effect_edges=effect_path,
+        suppes_graph=suppes_path,
+    )
+    if args.causal_only:
+        mode_str = "causal_only"
+    elif args.corr_threshold < 1.0:
+        mode_str = f"corr>={args.corr_threshold} (Suppes ∪ validated)"
+    else:
+        mode_str = f"geomean>={args.edge_threshold}"
     print(f"Graph: {len(edges)} edges ({mode_str})")
     for src, dst, w in edges:
         print(f"  {src}({MAST_NAMES[src]}) -> {dst}({MAST_NAMES[dst]})  ({w:.3f})")
@@ -458,7 +503,12 @@ def main():
         print(f"Filtered to {len(records)} traces from sample file: {args.sample_indices}")
 
     # Build output dir
-    graph_tag = "causal_only" if args.causal_only else f"t{args.edge_threshold}"
+    if args.causal_only:
+        graph_tag = "causal_only"
+    elif args.corr_threshold < 1.0:
+        graph_tag = f"corr{args.corr_threshold}"
+    else:
+        graph_tag = f"t{args.edge_threshold}"
     model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
     out_dir   = os.path.join(args.output_dir, f"{model_tag}-yesno-graph-inject-codename-{graph_tag}")
     os.makedirs(out_dir, exist_ok=True)
