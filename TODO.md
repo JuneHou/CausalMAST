@@ -5,6 +5,181 @@ Best current setup: **E3 with-graph, causal_only** (Mistral W-F1=0.4731 codename
 
 ---
 
+## Currently In Progress
+
+Open-source panel (**Gemma-3-27B, gpt-oss-20b, Mistral-Small-24B, QwQ-32B**).
+Dataset: AG2 (393 traces). No train/test split.
+QwQ-32B: vLLM only (`--enable_thinking`) — not supported on DeepInfra or ARC.
+
+### Task 1 — Who&When Baseline (no causal)
+
+Output dir: `baselines/who&when/outputs/`
+Naming: `{model_tag}-yesno-who_and_when_w1` / `{model_tag}-yesno-who_and_when_w2`
+
+| Model | W1 | W2 |
+|---|---|---|
+| Gemma-3-27B | infra | infra |
+| gpt-oss-120b | ✗ | ✗ |
+| gpt-oss-20b | infra | ✗ |
+| Mistral-Small-24B | ✓ | ✓ |
+| QwQ-32B | ✓ | ✓ |
+
+Score: `python eval/calculate_scores_yesno.py --annotation data/annotation/annotation_ag2_filtered.jsonl --pred_dir "baselines/who&when/outputs/<subdir>"`
+
+#### Commands (run from repo root; source API keys first)
+
+```bash
+# ARC:       source path/to/arc_llm_api.sh   → sets ARC_LLM_API_KEY
+# DeepInfra: export DEEPINFRA_API_KEY=<key>
+
+# === ARC API — gpt-oss-120b (default model) ===
+
+# [T1-ARC] W1 and W2
+python "baselines/who&when/run_who_and_when_api_arc.py" --variant w1
+python "baselines/who&when/run_who_and_when_api_arc.py" --variant w2
+
+# === DeepInfra API — Gemma-3-27B (default model) ===
+
+# [T1-DI-Gemma] resumes incomplete W1 and adds W2
+python "baselines/who&when/run_who_and_when_api_deepinfra.py" \
+    --model google/gemma-3-27b-it --variant w1
+python "baselines/who&when/run_who_and_when_api_deepinfra.py" \
+    --model google/gemma-3-27b-it --variant w2
+
+# === gpt-oss-20b — verify model ID on DeepInfra or re-run via vLLM ===
+
+# [T1-DI-20b] (commented; verify model ID first)
+# python "baselines/who&when/run_who_and_when_api_deepinfra.py" \
+#     --model <gpt-oss-20b-deepinfra-model-id> --variant w1
+# python "baselines/who&when/run_who_and_when_api_deepinfra.py" \
+#     --model <gpt-oss-20b-deepinfra-model-id> --variant w2
+```
+
+### Task 2 — Who&When + Causal (W1+GI / W2+CG; no span\_index)
+
+- **W1** → two-pass graph injection (`graph_inject`): `run_who_and_when_graph_inject_{vllm|api_deepinfra|api_arc}.py`
+- **W2** → one-pass in-prompt graph guidance (`with_graph`): `run_who_and_when_with_graph_{vllm|api_deepinfra|api_arc}.py`
+- No `--span_index` (MAST has no location prediction)
+
+Output dir: `baselines/who&when/outputs/`
+Naming: W1+GI → `{model_tag}-yesno-who_and_when_w1_graph_inject_causal_only`
+        W2+CG → `{model_tag}-yesno-who_and_when_w2_graph_causal_only`
+
+| Model | W1+GI | W2+CG |
+|---|---|---|
+| Gemma-3-27B | infra | infra |
+| gpt-oss-120b | ✓ | ✓ |
+| gpt-oss-20b | infra | infra |
+| Mistral-Small-24B | ✗ | ✗ |
+| QwQ-32B | ⚠ broken (0/393) | ✗ |
+
+#### Commands (run from repo root; source API keys first)
+
+```bash
+# === DeepInfra API — Gemma-3-27B W2+CG rerun (must NOT pass --span_index) ===
+
+# [T2-DI-Gemma-W2]
+python "baselines/who&when/causal/run_who_and_when_with_graph_api_deepinfra.py" \
+    --model google/gemma-3-27b-it --variant w2 --causal_only
+
+# === DeepInfra API — Mistral-Small-24B (both W1+GI and W2+CG missing) ===
+
+# [T2-DI-Mistral]
+python "baselines/who&when/causal/run_who_and_when_graph_inject_api_deepinfra.py" \
+    --model mistralai/Mistral-Small-3.1-24B-Instruct-2503 --variant w1 --causal_only
+python "baselines/who&when/causal/run_who_and_when_with_graph_api_deepinfra.py" \
+    --model mistralai/Mistral-Small-3.1-24B-Instruct-2503 --variant w2 --causal_only
+
+# === vLLM — gpt-oss-20b W2+CG (missing) ===
+
+# [T2-vLLM-20b-W2]
+CUDA_VISIBLE_DEVICES=<gpus> python "baselines/who&when/causal/run_who_and_when_with_graph_vllm.py" \
+    --model openai/gpt-oss-20b --variant w2 --causal_only \
+    --output_dir "baselines/who&when/outputs"
+
+# === vLLM — QwQ-32B (rerun W1+GI broken; add W2+CG; --enable_thinking) ===
+
+# [T2-vLLM-QwQ]
+CUDA_VISIBLE_DEVICES=<gpus> python "baselines/who&when/causal/run_who_and_when_graph_inject_vllm.py" \
+    --model Qwen/QwQ-32B --variant w1 --causal_only --enable_thinking \
+    --output_dir "baselines/who&when/outputs"
+CUDA_VISIBLE_DEVICES=<gpus> python "baselines/who&when/causal/run_who_and_when_with_graph_vllm.py" \
+    --model Qwen/QwQ-32B --variant w2 --causal_only --enable_thinking \
+    --output_dir "baselines/who&when/outputs"
+```
+
+### Task 3 — Threshold Sweep (+GI only, τ ∈ {random-11, 0.60, 0.50, 0.40})
+
+Output dir: `outputs_thres/`
+Script: `eval/full_run_eval_graph_inject.py` (+GI, vLLM)
+No DeepInfra/ARC eval sweep scripts for MAST — use vLLM for open-source models.
+
+Causal-only anchors (on disk): Gemma, gpt-oss-20b in `outputs_full/`; QwQ-32B in `outputs_think/`;
+Mistral +GI in `outputs_full_test/` (test run).
+
+| Model | random-11 | τ=0.60 | τ=0.50 | τ=0.40 |
+|---|---|---|---|---|
+| Mistral-Small-24B | ✓ | ✓ | ✓ | ✓ |
+| Gemma-3-27B | ✗ | ✗ | ✗ | ✗ |
+| gpt-oss-20b | ✗ | ✗ | ✗ | ✗ |
+| QwQ-32B | ✓ | ✓ | ✓ | ✓ |
+
+Remaining: 10 cells (Mistral +GI fully done; QwQ +GI random-11 + τ=0.60 done — τ=0.50, τ=0.40 still to go).
+
+#### Commands (run from repo root; vLLM only)
+
+```bash
+# === Gemma-3-27B +GI — 4 sweep points ===
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gemma-3-27b-it --model_tag gemma-3-27b-it \
+    --random_edges --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gemma-3-27b-it --model_tag gemma-3-27b-it \
+    --corr_threshold 0.60 --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gemma-3-27b-it --model_tag gemma-3-27b-it \
+    --corr_threshold 0.50 --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gemma-3-27b-it --model_tag gemma-3-27b-it \
+    --corr_threshold 0.40 --output_dir outputs_thres
+
+# === gpt-oss-20b +GI — 4 sweep points ===
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gpt-oss-20b --model_tag gpt-oss-20b \
+    --random_edges --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gpt-oss-20b --model_tag gpt-oss-20b \
+    --corr_threshold 0.60 --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gpt-oss-20b --model_tag gpt-oss-20b \
+    --corr_threshold 0.50 --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model openai/gpt-oss-20b --model_tag gpt-oss-20b \
+    --corr_threshold 0.40 --output_dir outputs_thres
+
+# === QwQ-32B +GI (rerun τ=0.60; add 0.50 and 0.40) — --enable_thinking ===
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model Qwen/QwQ-32B --model_tag QwQ-32B \
+    --corr_threshold 0.60 --enable_thinking --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model Qwen/QwQ-32B --model_tag QwQ-32B \
+    --corr_threshold 0.50 --enable_thinking --output_dir outputs_thres
+CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
+    --model Qwen/QwQ-32B --model_tag QwQ-32B \
+    --corr_threshold 0.40 --enable_thinking --output_dir outputs_thres
+```
+
+Score after sweep:
+```bash
+for d in outputs_thres/*/*-yesno-*/; do
+    python eval/calculate_scores_yesno.py \
+        --annotation data/annotation/annotation_ag2_filtered.jsonl \
+        --pred_dir "$d"
+done
+```
+
+---
+
 ## Model Alignment with TRAIL Benchmark
 
 TRAIL uses Gemini-2.5-Flash (closed-source) and Mistral-Small-3.1-24B (open-source).
@@ -120,13 +295,14 @@ python eval/calculate_scores_yesno.py \
 
 ---
 
-## Threshold Sweep — graph-richness × architecture ablation (mirrors TRAIL Ablation 3)
+## Threshold Sweep — graph-richness ablation (+GI only; mirrors TRAIL Ablation 3)
 
 Goal: characterise how W-F1 scales with the size of the injected graph
 across the open-source model panel, mirroring TRAIL's
-`paper/ablation_graph_richness.tex` story. Two architectures (`+CG` one-pass,
-`+GI+SI` two-pass) × three corr-thresholds × a random-N null-graph control,
-all anchored against the 11-edge causal-only baseline.
+`paper/ablation_graph_richness.tex` story. Single architecture (`+GI+SI`
+two-pass) × three corr-thresholds × a random-N null-graph control, all
+anchored against the 11-edge causal-only baseline. (`+CG` is dropped from
+the sweep — paper main table already covers it at causal_only.)
 
 ### Score definition (May 2026 update)
 
@@ -143,7 +319,7 @@ under the old score and are stale; do not reuse them.
 
 ### Edge semantics — use `--corr_threshold` (NOT `--edge_threshold`)
 
-All four `full_run_*` scripts in MAST support `--corr_threshold τ` with the
+`eval/full_run_eval_graph_inject.py` supports `--corr_threshold τ` with the
 same union semantics as TRAIL:
 **(Suppes geomean ≥ τ) ∪ (intervention-validated causal edges)**.
 The old `--edge_threshold` flag still works but is pure-Suppes (no union)
@@ -177,10 +353,8 @@ Suppes set.
 
 ### Sweep spec
 
-- **Architectures (both)**:
-  - `+CG` one-pass: `eval/full_run_eval_with_graph.py`
-  - `+GI+SI` two-pass: `eval/full_run_eval_graph_inject.py`
-- **Sweep settings (5 per architecture)**: `{causal_only, random, 0.60, 0.50, 0.40}`
+- **Architecture (only)**: `+GI+SI` two-pass — `eval/full_run_eval_graph_inject.py`.
+- **Sweep settings (5)**: `{causal_only, random, 0.60, 0.50, 0.40}`
   → corr-union edge counts **11 → 11 → 18 → 25 → 29** (monotone after the
   random baseline, well-spread).
 - **Models — open-source panel** (mirrors TRAIL's open-source panel):
@@ -190,9 +364,9 @@ Suppes set.
   4. **QwQ-32B** — thinking-model representative (use `--enable_thinking`)
 - **Dataset**: AG2 (393 traces). No split equivalent to TRAIL's GAIA/SWE distinction.
 - **Already on disk (anchors)**:
-  - causal_only: all 4 models, both architectures, in `outputs_full/`. Re-usable
-    as-is (causal-only doesn't go through the geomean score, so the score
-    change doesn't affect those outputs).
+  - causal_only: all 4 models, `+GI`, in `outputs_full/` (QwQ-32B in `outputs_think/`).
+    Re-usable as-is (causal-only doesn't go through the geomean score, so the
+    score change doesn't affect those outputs).
 - **Stale (must re-run)**:
   - All `outputs_corr/*-t0.2/` results use the old `sqrt(P(B|A)*pr_delta)`
     score and the deprecated `--edge_threshold` flag (pure-Suppes, no causal
@@ -201,28 +375,14 @@ Suppes set.
 ### Commands (TRAIL-compatible sweep, `--corr_threshold` + `--random_edges`)
 
 ```bash
-# Pattern for one (model, architecture, setting) cell
-python eval/full_run_eval_with_graph.py \
+# Pattern for one (model, setting) cell
+python eval/full_run_eval_graph_inject.py \
     --model <model> --model_tag <tag> \
     {--corr_threshold <τ> | --random_edges} \
     [--enable_thinking] \
     --output_dir outputs_thres
 
-# Mistral-Small-3.1-24B, +CG
-CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_with_graph.py \
-    --model mistralai/Mistral-Small-3.1-24B-Instruct-2503 --model_tag Mistral-Small-24B \
-    --random_edges --output_dir outputs_thres
-CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_with_graph.py \
-    --model mistralai/Mistral-Small-3.1-24B-Instruct-2503 --model_tag Mistral-Small-24B \
-    --corr_threshold 0.60 --output_dir outputs_thres
-CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_with_graph.py \
-    --model mistralai/Mistral-Small-3.1-24B-Instruct-2503 --model_tag Mistral-Small-24B \
-    --corr_threshold 0.50 --output_dir outputs_thres
-CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_with_graph.py \
-    --model mistralai/Mistral-Small-3.1-24B-Instruct-2503 --model_tag Mistral-Small-24B \
-    --corr_threshold 0.40 --output_dir outputs_thres
-
-# Mistral-Small-3.1-24B, +GI+SI (same 4 settings)
+# Mistral-Small-3.1-24B, +GI (4 settings)
 CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
     --model mistralai/Mistral-Small-3.1-24B-Instruct-2503 --model_tag Mistral-Small-24B \
     --random_edges --output_dir outputs_thres
@@ -235,12 +395,8 @@ CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
     --corr_threshold 0.50 --enable_thinking --output_dir outputs_thres
 ```
 
-Output directories use the graph-tag suffix from the inner scripts:
+Output directories use the graph-tag suffix from the inner script:
 ```
-outputs_thres/{model_tag}-yesno-with-graph-codename-random11_seed42/
-outputs_thres/{model_tag}-yesno-with-graph-codename-corr0.6/
-outputs_thres/{model_tag}-yesno-with-graph-codename-corr0.5/
-outputs_thres/{model_tag}-yesno-with-graph-codename-corr0.4/
 outputs_thres/{model_tag}-yesno-graph-inject-codename-random11_seed42/
 outputs_thres/{model_tag}-yesno-graph-inject-codename-corr0.6/
 outputs_thres/{model_tag}-yesno-graph-inject-codename-corr0.5/
@@ -249,10 +405,10 @@ outputs_thres/{model_tag}-yesno-graph-inject-codename-corr0.4/
 
 ### Run count
 
-- New thresholds {0.60, 0.50, 0.40}: 4 models × 2 archs × 3 τ = **24 runs**
-- Random baseline: 4 models × 2 archs × 1 = **8 runs**
+- New thresholds {0.60, 0.50, 0.40}: 4 models × 1 arch × 3 τ = **12 runs**
+- Random baseline: 4 models × 1 arch × 1 = **4 runs**
 - W&W mini-sweep (see below): 1 model × 2 variants × 2 archs × 4 settings = **16 runs**
-- Total new compute: **48 runs** (32 eval + 16 W&W ablation)
+- Total new compute: **32 runs** (16 eval + 16 W&W ablation)
 
 (causal_only stays as the on-disk anchor for the eval sweep — not re-run.)
 
@@ -291,10 +447,10 @@ with the same `eval/calculate_scores_yesno.py` as the eval sweep.
 # After each run completes
 python eval/calculate_scores_yesno.py \
     --annotation data/annotation/annotation_ag2_filtered.jsonl \
-    --pred_dir outputs_thres/<model_tag>-yesno-<with-graph|graph-inject>-codename-<tag>
+    --pred_dir outputs_thres/<model_tag>-yesno-graph-inject-codename-<tag>
 
 # Bulk-score everything at the end
-for d in outputs_thres/*-yesno-*-codename-*/; do
+for d in outputs_thres/*-yesno-graph-inject-codename-*/; do
     python eval/calculate_scores_yesno.py \
         --annotation data/annotation/annotation_ag2_filtered.jsonl \
         --pred_dir "$d"
@@ -303,17 +459,17 @@ done
 
 ### Plot
 
-Once all 32 runs complete, parse W-F1 from `*-metrics.json` and plot
+Once all 16 eval runs complete, parse W-F1 from `*-metrics.json` and plot
 τ on the x-axis (left-to-right: causal_only, random-11, 0.60, 0.50, 0.40 —
-i.e. monotone in edge count). Two panels per model: W-F1 for `+CG` and
-`+GI+SI` overlaid. The expected reading: `+CG` saturates or regresses at
-higher edge counts; `+GI+SI` keeps climbing; random-11 sits well below
-causal-only (confirming gains are structural, not edge-count-driven).
+i.e. monotone in edge count). One panel per model: W-F1 for `+GI+SI`.
+Expected reading: `+GI+SI` keeps climbing with edge count; random-11 sits
+well below causal-only (confirming gains are structural, not edge-count-driven).
 
-### Optional driver script
+### Driver script
 
-A `run_threshold_sweep.sh` analogous to TRAIL's `benchmarking/eval/run_threshold_sweep.sh`
-is deferred. For now, launch the 32 cells manually or via per-model sbatch.
+`eval/run_threshold_sweep.sh` runs the +GI sweep for one model across all
+4 sweep settings (random-11, 0.60, 0.50, 0.40). Usage:
+`eval/run_threshold_sweep.sh <model> [gpus] [output_dir] [backend]`.
 
 ---
 

@@ -382,6 +382,8 @@ def main():
                     help="Override the model tag used in the output directory name")
     ap.add_argument("--enable_thinking", action="store_true",
                     help="Pass enable_thinking=True via chat_template_kwargs (for QwQ/Qwen3/DeepSeek-R1)")
+    ap.add_argument("--span_index", action="store_true",
+                    help="Accepted for CLI parity with TRAIL sweep; no-op (MAST has no location prediction).")
     args = ap.parse_args()
 
     if args.tp is None:

@@ -412,6 +412,7 @@ def parse_response(response: str) -> dict:
     if cleaned.endswith("@@"):
         cleaned = cleaned[:-2]
     cleaned = re.sub(r'\*\*(yes|no)\*\*', r'\1', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<(yes|no)>', r'\1', cleaned, flags=re.IGNORECASE)
 
     result = {}
     for mode in MAST_MODES:
@@ -440,6 +441,7 @@ def parse_pass2_response(response: str, target_cats: List[str]) -> Dict[str, int
     if cleaned.endswith("@@"):
         cleaned = cleaned[:-2]
     cleaned = re.sub(r'\*\*(yes|no)\*\*', r'\1', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<(yes|no)>', r'\1', cleaned, flags=re.IGNORECASE)
     result = {}
     for mode in target_cats:
         patterns = [
