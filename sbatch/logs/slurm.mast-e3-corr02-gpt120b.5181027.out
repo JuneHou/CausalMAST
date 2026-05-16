@@ -1,0 +1,124 @@
+START: 2026-04-30 08:43:04 EDT
+Host: tc-gpu003
+PWD: /projects/slmreasoning/junh/causal-error/CausalMAST
+Python 3.10.0
+Graph: 21 edges (stability>=0.2)
+  2.1 → 1.4  (0.889)
+  1.4 → 1.5  (0.764)
+  2.1 → 1.3  (0.708)
+  1.3 → 1.5  (0.559)
+  2.1 → 3.3  (0.459)
+  2.3 → 1.5  (0.408)
+  1.1 → 2.6  (0.402)
+  2.3 → 1.3  (0.374)
+  2.2 → 1.5  (0.359)
+  2.2 → 2.6  (0.340)
+  2.2 → 2.3  (0.332)
+  2.3 → 3.1  (0.317)
+  1.1 → 2.3  (0.298)
+  1.1 → 3.3  (0.222)
+  2.1 → 2.4  (0.218)
+  2.6 → 3.1  (0.205)
+  1.3 → 3.3  (0.199)
+  2.3 → 1.4  (0.185)
+  2.2 → 1.4  (0.117)
+  2.3 → 2.4  (0.108)
+  2.2 → 2.4  (0.080)
+
+Loaded 393 traces
+Pending: 393 (skipping 0 already done)
+
+Loading model: /common/data/models/openai--gpt-oss-120b  (tp=4)
+INFO 04-30 08:43:43 [utils.py:261] non-default args: {'trust_remote_code': True, 'max_model_len': 32768, 'tensor_parallel_size': 4, 'disable_log_stats': True, 'model': '/common/data/models/openai--gpt-oss-120b'}
+INFO 04-30 08:43:43 [model.py:541] Resolved architecture: GptOssForCausalLM
+ERROR 04-30 08:43:43 [repo_utils.py:47] Error retrieving safetensors: Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/common/data/models/openai--gpt-oss-120b'. Use `repo_type` argument if needed., retrying 1 of 2
+ERROR 04-30 08:43:45 [repo_utils.py:45] Error retrieving safetensors: Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/common/data/models/openai--gpt-oss-120b'. Use `repo_type` argument if needed.
+INFO 04-30 08:43:45 [model.py:1882] Downcasting torch.float32 to torch.bfloat16.
+INFO 04-30 08:43:45 [model.py:1561] Using max model len 32768
+INFO 04-30 08:43:55 [scheduler.py:226] Chunked prefill is enabled with max_num_batched_tokens=8192.
+INFO 04-30 08:43:55 [config.py:314] Overriding max cuda graph capture size to 1024 for performance.
+INFO 04-30 08:43:55 [vllm.py:624] Asynchronous scheduling is enabled.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:43:56 [core.py:96] Initializing a V1 LLM engine (v0.15.1) with config: model='/common/data/models/openai--gpt-oss-120b', speculative_config=None, tokenizer='/common/data/models/openai--gpt-oss-120b', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=32768, download_dir=None, load_format=auto, tensor_parallel_size=4, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=mxfp4, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='openai_gptoss', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=0, served_model_name=/common/data/models/openai--gpt-oss-120b, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'level': None, 'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'splitting_ops': ['vllm::unified_attention', 'vllm::unified_attention_with_output', 'vllm::unified_mla_attention', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::gdn_attention_core', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::unified_kv_cache_update'], 'compile_mm_encoder': False, 'compile_sizes': [], 'compile_ranges_split_points': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512, 528, 544, 560, 576, 592, 608, 624, 640, 656, 672, 688, 704, 720, 736, 752, 768, 784, 800, 816, 832, 848, 864, 880, 896, 912, 928, 944, 960, 976, 992, 1008, 1024], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'eliminate_noops': True, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': 1024, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': True}, 'local_cache_dir': None, 'static_all_moe_layers': []}
+[0;36m(EngineCore_DP0 pid=60170)[0;0m WARNING 04-30 08:43:56 [multiproc_executor.py:910] Reducing Torch parallelism from 32 threads to 1 to avoid unnecessary CPU contention. Set OMP_NUM_THREADS in the external environment to tune this value as needed.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:43:58 [parallel_state.py:1212] world_size=4 rank=1 local_rank=1 distributed_init_method=tcp://127.0.0.1:42125 backend=nccl
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:43:58 [parallel_state.py:1212] world_size=4 rank=0 local_rank=0 distributed_init_method=tcp://127.0.0.1:42125 backend=nccl
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:43:58 [parallel_state.py:1212] world_size=4 rank=3 local_rank=3 distributed_init_method=tcp://127.0.0.1:42125 backend=nccl
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:43:58 [parallel_state.py:1212] world_size=4 rank=2 local_rank=2 distributed_init_method=tcp://127.0.0.1:42125 backend=nccl
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:43:59 [pynccl.py:111] vLLM is using nccl==2.27.5
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m WARNING 04-30 08:44:00 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+WARNING 04-30 08:44:00 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+WARNING 04-30 08:44:00 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m WARNING 04-30 08:44:00 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:44:01 [parallel_state.py:1423] rank 1 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 1, EP rank 1
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:44:01 [parallel_state.py:1423] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0
+INFO 04-30 08:44:01 [parallel_state.py:1423] rank 2 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 2, EP rank 2
+INFO 04-30 08:44:01 [parallel_state.py:1423] rank 3 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 3, EP rank 3
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:03 [gpu_model_runner.py:4033] Starting to load model /common/data/models/openai--gpt-oss-120b...
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:08 [cuda.py:364] Using TRITON_ATTN attention backend out of potential backends: ('TRITON_ATTN',)
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP2 pid=60180)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP1 pid=60178)[0;0m INFO 04-30 08:44:08 [mxfp4.py:161] Using Marlin backend
+[0;36m(Worker_TP3 pid=60185)[0;0m INFO 04-30 08:44:08 [mxfp4.py:161] Using Marlin backend
+INFO 04-30 08:44:08 [mxfp4.py:161] Using Marlin backend
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:08 [mxfp4.py:161] Using Marlin backend
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP3 pid=60185)[0;0m WARNING 04-30 08:44:15 [marlin_utils_fp4.py:336] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP1 pid=60178)[0;0m WARNING 04-30 08:44:15 [marlin_utils_fp4.py:336] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:16 [default_loader.py:291] Loading weights took 7.41 seconds
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m WARNING 04-30 08:44:16 [marlin_utils_fp4.py:336] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP2 pid=60180)[0;0m WARNING 04-30 08:44:16 [marlin_utils_fp4.py:336] Your GPU does not have native support for FP4 computation but FP4 quantization is being used. Weight-only FP4 compression will be used leveraging the Marlin kernel. This may degrade performance for compute-heavy workloads.
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:19 [gpu_model_runner.py:4130] Model loading took 17.22 GiB memory and 15.154139 seconds
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:31 [backends.py:812] Using cache directory: /home/junh/.cache/vllm/torch_compile_cache/14a1b6f7ad/rank_0_0/backbone for vLLM's torch.compile
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:31 [backends.py:872] Dynamo bytecode transform time: 11.96 s
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP1 pid=60178)[0;0m INFO 04-30 08:44:50 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 15.135 s
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP3 pid=60185)[0;0m INFO 04-30 08:44:50 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 15.298 s
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:50 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 15.286 s
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:50 [monitor.py:34] torch.compile takes 27.24 s in total
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP2 pid=60180)[0;0m INFO 04-30 08:44:50 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 12.093 s
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:44:52 [gpu_worker.py:356] Available KV cache memory: 51.73 GiB
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:44:53 [kv_cache_utils.py:1307] GPU KV cache size: 3,013,376 tokens
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:44:53 [kv_cache_utils.py:1312] Maximum concurrency for 32,768 tokens per request: 146.62x
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:45:08 [custom_all_reduce.py:216] Registering 8614 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP1 pid=60178)[0;0m INFO 04-30 08:45:08 [custom_all_reduce.py:216] Registering 8614 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP2 pid=60180)[0;0m INFO 04-30 08:45:08 [custom_all_reduce.py:216] Registering 8614 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP3 pid=60185)[0;0m INFO 04-30 08:45:08 [custom_all_reduce.py:216] Registering 8614 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP0 pid=60176)[0;0m INFO 04-30 08:45:09 [gpu_model_runner.py:5063] Graph capturing finished in 16 secs, took 0.99 GiB
+[0;36m(EngineCore_DP0 pid=60170)[0;0m INFO 04-30 08:45:09 [core.py:272] init engine (profile, create kv cache, warmup model) took 50.31 seconds
+INFO 04-30 08:45:12 [llm.py:343] Supported tasks: ['generate']
+Running inference (batch_size=4, enable_thinking=False)...
+INFO 04-30 08:45:13 [hf.py:310] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+
+✓ Outputs saved to outputs_corr/gpt-oss-120b-yesno-with-graph-codename-t0.2/
+  Next: python eval/calculate_scores_yesno.py --pred_dir outputs_corr/gpt-oss-120b-yesno-with-graph-codename-t0.2
+[0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP1 pid=60178)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m [0;36m(Worker_TP3 pid=60185)[0;0m [0;36m(EngineCore_DP0 pid=60170)[0;0m WARNING 04-30 09:01:48 [multiproc_executor.py:786] WorkerProc was terminated
+[0;36m(Worker_TP2 pid=60180)[0;0m WARNING 04-30 09:01:48 [multiproc_executor.py:786] WorkerProc was terminated
+[0;36m(Worker_TP0 pid=60176)[0;0m WARNING 04-30 09:01:48 [multiproc_executor.py:786] WorkerProc was terminated
+WARNING 04-30 09:01:48 [multiproc_executor.py:786] WorkerProc was terminated
+Loading GT from data/annotation/annotation_ag2_filtered.jsonl ...
+  393 records loaded.
+
+================================================================================
+Results: gpt-oss-120b-yesno-with-graph-codename-t0.2
+================================================================================
+Traces scored:    393
+Weighted F1:      0.2362
+Macro F1:         0.1706   Macro P: 0.2908   Macro R: 0.1402
+Macro Accuracy:   0.6616
+Kappa (per-label avg): 0.0040   Kappa (pooled): 0.0635   Kappa (per-trace avg): 0.0636
+
+  Mode   Name                                        P      R     F1    Acc      κ  Supp   Det%
+  ------ -------------------------------------- ------ ------ ------ ------ ------ ----- ------
+  1.1    Disobey Task Specification              0.475  0.221  0.302  0.552  0.033   172  20.4%
+  1.2    Disobey Role Specification              0.000  0.000  0.000  0.873 -0.032     7  10.9%
+  1.3    Step Repetition                         0.566  0.198  0.293  0.473  0.010   217  19.3%
+  1.4    Loss of Conversation History            0.000  0.000  0.000  0.888  0.000    44   0.0%
+  1.5    Unaware of Termination Conditions       0.353  0.069  0.116  0.534 -0.034   173   8.6%
+  2.1    Conversation Reset                      0.000  0.000  0.000  0.924 -0.005    29   0.2%
+  2.2    Fail to Ask for Clarification           0.355  0.066  0.112  0.555 -0.025   166   7.9%
+  2.3    Task Derailment                         0.280  0.055  0.091  0.646 -0.017   128   6.4%
+  2.4    Information Withholding                 0.143  0.095  0.114  0.921  0.075    21   3.6%
+  2.6    Action-Reasoning Mismatch               0.709  0.301  0.422  0.422  0.007   276  29.8%
+  3.1    Premature Termination                   0.395  0.117  0.181  0.654  0.037   128   9.7%
+  3.2    Weak Verification                       0.195  0.274  0.228  0.603 -0.029    84  30.0%
+  3.3    No or Incorrect Verification            0.310  0.426  0.359  0.555  0.031   115  40.2%
+
+✓ Metrics saved to outputs_corr/gpt-oss-120b-yesno-with-graph-codename-t0.2-metrics.json
+END: 2026-04-30 09:01:53 EDT
+Exit code: 0

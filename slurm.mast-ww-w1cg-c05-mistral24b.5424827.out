@@ -1,0 +1,99 @@
+START: 2026-05-16 12:58:37 EDT
+Host: tc-dgx003
+PWD: /projects/slmreasoning/junh/causal-error/CausalMAST
+Python 3.10.0
+Graph: 25 edges (corr0.5)
+  2.1(Conversation Reset) -> 1.4(Loss of Conversation History)  (0.807)
+  1.2(Disobey Role Specification) -> 1.4(Loss of Conversation History)  (0.766)
+  2.1(Conversation Reset) -> 1.5(Unaware of Termination Conditions)  (0.717)
+  1.4(Loss of Conversation History) -> 1.5(Unaware of Termination Conditions)  (0.699)
+  2.4(Information Withholding) -> 1.5(Unaware of Termination Conditions)  (0.684)
+  1.2(Disobey Role Specification) -> 3.3(No or Incorrect Verification)  (0.647)
+  2.4(Information Withholding) -> 3.1(Premature Termination)  (0.640)
+  2.4(Information Withholding) -> 1.4(Loss of Conversation History)  (0.618)
+  2.1(Conversation Reset) -> 1.3(Step Repetition)  (0.598)
+  1.2(Disobey Role Specification) -> 2.2(Fail to Ask for Clarification)  (0.575)
+  2.1(Conversation Reset) -> 3.3(No or Incorrect Verification)  (0.566)
+  1.2(Disobey Role Specification) -> 1.3(Step Repetition)  (0.558)
+  1.3(Step Repetition) -> 1.5(Unaware of Termination Conditions)  (0.543)
+  2.4(Information Withholding) -> 3.3(No or Incorrect Verification)  (0.532)
+  2.3(Task Derailment) -> 1.5(Unaware of Termination Conditions)  (0.514)
+  ... and 10 more
+
+Loaded 393 traces from data/annotation/annotation_ag2_filtered.jsonl
+Output dir: /projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w1_graph_corr0.5
+Pending: 393 (skipping 0 already done)
+
+Loading model: /common/data/models/mistralai--Mistral-Small-3.1-24B-Instruct-2503  (tp=2)
+INFO 05-16 12:58:47 [utils.py:261] non-default args: {'trust_remote_code': True, 'max_model_len': 108000, 'tensor_parallel_size': 2, 'disable_log_stats': True, 'model': '/common/data/models/mistralai--Mistral-Small-3.1-24B-Instruct-2503'}
+INFO 05-16 12:58:47 [model.py:541] Resolved architecture: PixtralForConditionalGeneration
+INFO 05-16 12:58:47 [model.py:1561] Using max model len 108000
+INFO 05-16 12:58:47 [scheduler.py:226] Chunked prefill is enabled with max_num_batched_tokens=8192.
+INFO 05-16 12:58:47 [vllm.py:624] Asynchronous scheduling is enabled.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 12:58:52 [core.py:96] Initializing a V1 LLM engine (v0.15.1) with config: model='/common/data/models/mistralai--Mistral-Small-3.1-24B-Instruct-2503', speculative_config=None, tokenizer='/common/data/models/mistralai--Mistral-Small-3.1-24B-Instruct-2503', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=108000, download_dir=None, load_format=auto, tensor_parallel_size=2, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=0, served_model_name=/common/data/models/mistralai--Mistral-Small-3.1-24B-Instruct-2503, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'level': None, 'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'splitting_ops': ['vllm::unified_attention', 'vllm::unified_attention_with_output', 'vllm::unified_mla_attention', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::gdn_attention_core', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::unified_kv_cache_update'], 'compile_mm_encoder': False, 'compile_sizes': [], 'compile_ranges_split_points': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'eliminate_noops': True, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': True}, 'local_cache_dir': None, 'static_all_moe_layers': []}
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m WARNING 05-16 12:58:52 [multiproc_executor.py:910] Reducing Torch parallelism from 16 threads to 1 to avoid unnecessary CPU contention. Set OMP_NUM_THREADS in the external environment to tune this value as needed.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 12:58:54 [parallel_state.py:1212] world_size=2 rank=1 local_rank=1 distributed_init_method=tcp://127.0.0.1:44379 backend=nccl
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 12:58:54 [parallel_state.py:1212] world_size=2 rank=0 local_rank=0 distributed_init_method=tcp://127.0.0.1:44379 backend=nccl
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 12:58:54 [pynccl.py:111] vLLM is using nccl==2.27.5
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m WARNING 05-16 12:58:55 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m WARNING 05-16 12:58:55 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 12:58:55 [parallel_state.py:1423] rank 1 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 1, EP rank N/A
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 12:58:55 [parallel_state.py:1423] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank N/A
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 12:58:56 [gpu_model_runner.py:4033] Starting to load model /common/data/models/mistralai--Mistral-Small-3.1-24B-Instruct-2503...
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 12:58:59 [cuda.py:364] Using FLASH_ATTN attention backend out of potential backends: ('FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION')
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 12:59:57 [default_loader.py:291] Loading weights took 57.75 seconds
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 12:59:57 [gpu_model_runner.py:4130] Model loading took 22.8 GiB memory and 60.778983 seconds
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP1 pid=3468884)[0;0m INFO 05-16 12:59:58 [gpu_model_runner.py:4958] Encoder cache will be initialized with a budget of 8192 tokens, and profiled with 2 image items of the maximum feature size.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 12:59:58 [gpu_model_runner.py:4958] Encoder cache will be initialized with a budget of 8192 tokens, and profiled with 2 image items of the maximum feature size.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP1 pid=3468884)[0;0m WARNING 05-16 12:59:58 [context.py:472] PixtralProcessorAdapter did not return `BatchFeature`. Make sure to match the behaviour of `ProcessorMixin` when implementing custom processors.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m WARNING 05-16 12:59:58 [context.py:472] PixtralProcessorAdapter did not return `BatchFeature`. Make sure to match the behaviour of `ProcessorMixin` when implementing custom processors.
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 13:00:08 [backends.py:812] Using cache directory: /home/junh/.cache/vllm/torch_compile_cache/96236e806e/rank_0_0/backbone for vLLM's torch.compile
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 13:00:08 [backends.py:872] Dynamo bytecode transform time: 7.95 s
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP1 pid=3468884)[0;0m INFO 05-16 13:00:20 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 8.326 s
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 13:00:20 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 8.293 s
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 13:00:20 [monitor.py:34] torch.compile takes 16.24 s in total
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 13:00:22 [gpu_worker.py:356] Available KV cache memory: 46.06 GiB
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 13:00:22 [kv_cache_utils.py:1307] GPU KV cache size: 603,664 tokens
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 13:00:22 [kv_cache_utils.py:1312] Maximum concurrency for 108,000 tokens per request: 5.59x
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP1 pid=3468884)[0;0m INFO 05-16 13:00:28 [custom_all_reduce.py:216] Registering 6880 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 13:00:28 [custom_all_reduce.py:216] Registering 6880 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m INFO 05-16 13:00:28 [gpu_model_runner.py:5063] Graph capturing finished in 6 secs, took 0.66 GiB
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m INFO 05-16 13:00:28 [core.py:272] init engine (profile, create kv cache, warmup model) took 30.62 seconds
+INFO 05-16 13:00:29 [llm.py:343] Supported tasks: ['generate']
+[W1] Running inference on 393 traces (batch_size=8)...
+
+Outputs saved to /projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w1_graph_corr0.5/
+  Next: python eval/calculate_scores_yesno.py --pred_dir "/projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w1_graph_corr0.5"
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP1 pid=3468884)[0;0m WARNING 05-16 13:33:08 [multiproc_executor.py:786] WorkerProc was terminated
+[0;36m(EngineCore_DP0 pid=3468876)[0;0m [0;36m(Worker_TP0 pid=3468882)[0;0m WARNING 05-16 13:33:08 [multiproc_executor.py:786] WorkerProc was terminated
+Loading GT from data/annotation/annotation_ag2_filtered.jsonl ...
+  393 records loaded.
+
+================================================================================
+Results: mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w1_graph_corr0.5
+================================================================================
+Traces scored:    393
+Weighted F1:      0.2312
+Macro F1:         0.1730   Macro P: 0.3056   Macro R: 0.1719
+Macro Accuracy:   0.6596
+Kappa (per-label avg): 0.0213   Kappa (pooled): 0.0721   Kappa (per-trace avg): 0.0692
+
+  Mode   Name                                        P      R     F1    Acc      κ  Supp   Det%
+  ------ -------------------------------------- ------ ------ ------ ------ ------ ----- ------
+  1.1    Disobey Task Specification              0.500  0.035  0.065  0.562  0.009   172   3.0%
+  1.2    Disobey Role Specification              0.250  0.143  0.182  0.977  0.171     7   1.0%
+  1.3    Step Repetition                         0.500  0.157  0.239  0.448 -0.034   217  17.3%
+  1.4    Loss of Conversation History            0.000  0.000  0.000  0.878 -0.019    44   1.0%
+  1.5    Unaware of Termination Conditions       0.472  0.098  0.163  0.555  0.013   173   9.2%
+  2.1    Conversation Reset                      0.000  0.000  0.000  0.926  0.000    29   0.0%
+  2.2    Fail to Ask for Clarification           0.474  0.223  0.303  0.567  0.045   166  19.9%
+  2.3    Task Derailment                         0.286  0.047  0.081  0.651 -0.012   128   5.3%
+  2.4    Information Withholding                 0.000  0.000  0.000  0.944 -0.005    21   0.2%
+  2.6    Action-Reasoning Mismatch               0.741  0.351  0.477  0.458  0.045   276  33.3%
+  3.1    Premature Termination                   0.200  0.008  0.015  0.667 -0.010   128   1.3%
+  3.2    Weak Verification                       0.197  0.643  0.302  0.364 -0.038    84  69.7%
+  3.3    No or Incorrect Verification            0.353  0.530  0.424  0.578  0.111   115  44.0%
+
+✓ Metrics saved to /projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w1_graph_corr0.5-metrics.json
+END: 2026-05-16 13:33:12 EDT
+Exit code: 0

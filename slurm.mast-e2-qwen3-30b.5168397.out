@@ -1,0 +1,79 @@
+START: 2026-04-27 21:32:44 EDT
+Host: tc-dgx004
+PWD: /projects/slmreasoning/junh/causal-error/CausalMAST
+Python 3.10.0
+Loaded 393 traces from data/annotation/annotation_ag2_filtered.jsonl
+Pending: 393 (skipping 0 already done)
+Loading model: /common/data/models/qwen--Qwen3-30B-A3B  (tp=2)
+INFO 04-27 21:33:43 [utils.py:261] non-default args: {'trust_remote_code': True, 'max_model_len': 32768, 'tensor_parallel_size': 2, 'disable_log_stats': True, 'model': '/common/data/models/qwen--Qwen3-30B-A3B'}
+INFO 04-27 21:33:43 [model.py:541] Resolved architecture: Qwen3MoeForCausalLM
+INFO 04-27 21:33:43 [model.py:1561] Using max model len 32768
+INFO 04-27 21:33:45 [scheduler.py:226] Chunked prefill is enabled with max_num_batched_tokens=8192.
+INFO 04-27 21:33:45 [vllm.py:624] Asynchronous scheduling is enabled.
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:33:46 [core.py:96] Initializing a V1 LLM engine (v0.15.1) with config: model='/common/data/models/qwen--Qwen3-30B-A3B', speculative_config=None, tokenizer='/common/data/models/qwen--Qwen3-30B-A3B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=32768, download_dir=None, load_format=auto, tensor_parallel_size=2, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=0, served_model_name=/common/data/models/qwen--Qwen3-30B-A3B, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'level': None, 'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'splitting_ops': ['vllm::unified_attention', 'vllm::unified_attention_with_output', 'vllm::unified_mla_attention', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::gdn_attention_core', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::unified_kv_cache_update'], 'compile_mm_encoder': False, 'compile_sizes': [], 'compile_ranges_split_points': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'eliminate_noops': True, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': True}, 'local_cache_dir': None, 'static_all_moe_layers': []}
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m WARNING 04-27 21:33:46 [multiproc_executor.py:910] Reducing Torch parallelism from 16 threads to 1 to avoid unnecessary CPU contention. Set OMP_NUM_THREADS in the external environment to tune this value as needed.
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:33:54 [parallel_state.py:1212] world_size=2 rank=1 local_rank=1 distributed_init_method=tcp://127.0.0.1:48397 backend=nccl
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:33:54 [parallel_state.py:1212] world_size=2 rank=0 local_rank=0 distributed_init_method=tcp://127.0.0.1:48397 backend=nccl
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:33:55 [pynccl.py:111] vLLM is using nccl==2.27.5
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m WARNING 04-27 21:33:56 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m WARNING 04-27 21:33:56 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:33:56 [parallel_state.py:1423] rank 1 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 1, EP rank 1
+INFO 04-27 21:33:56 [parallel_state.py:1423] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank 0
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:33:59 [gpu_model_runner.py:4033] Starting to load model /common/data/models/qwen--Qwen3-30B-A3B...
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:34:05 [cuda.py:364] Using FLASH_ATTN attention backend out of potential backends: ('FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION')
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:34:05 [unquantized.py:103] Using TRITON backend for Unquantized MoE
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:35:38 [default_loader.py:291] Loading weights took 93.14 seconds
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:35:39 [gpu_model_runner.py:4130] Model loading took 28.46 GiB memory and 99.314279 seconds
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:35:57 [backends.py:812] Using cache directory: /home/junh/.cache/vllm/torch_compile_cache/7c28676aa8/rank_0_0/backbone for vLLM's torch.compile
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:35:57 [backends.py:872] Dynamo bytecode transform time: 18.20 s
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP1 pid=2157082)[0;0m INFO 04-27 21:36:11 [backends.py:302] Cache the graph of compile range (1, 8192) for later use
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:36:12 [backends.py:302] Cache the graph of compile range (1, 8192) for later use
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m WARNING 04-27 21:36:14 [fused_moe.py:1090] Using default MoE config. Performance might be sub-optimal! Config file not found at /projects/slmreasoning/junh/envs/causal/lib/python3.10/site-packages/vllm/model_executor/layers/fused_moe/configs/E=128,N=384,device_name=NVIDIA_A100-SXM4-80GB.json
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:36:23 [backends.py:319] Compiling a graph for compile range (1, 8192) takes 20.56 s
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:36:23 [monitor.py:34] torch.compile takes 38.76 s in total
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:36:25 [gpu_worker.py:356] Available KV cache memory: 40.46 GiB
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:36:25 [kv_cache_utils.py:1307] GPU KV cache size: 883,808 tokens
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:36:25 [kv_cache_utils.py:1312] Maximum concurrency for 32,768 tokens per request: 26.97x
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP1 pid=2157082)[0;0m INFO 04-27 21:36:39 [custom_all_reduce.py:216] Registering 8342 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:36:39 [custom_all_reduce.py:216] Registering 8342 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m INFO 04-27 21:36:40 [gpu_model_runner.py:5063] Graph capturing finished in 14 secs, took 0.90 GiB
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m INFO 04-27 21:36:40 [core.py:272] init engine (profile, create kv cache, warmup model) took 60.74 seconds
+INFO 04-27 21:36:44 [llm.py:343] Supported tasks: ['generate']
+Running inference (batch_size=8, enable_thinking=False)...
+INFO 04-27 21:36:44 [hf.py:310] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+
+✓ Outputs saved to outputs/qwen3-30b-a3b-yesno-baseline/
+  Next: python eval/calculate_scores_yesno.py --pred_dir outputs/qwen3-30b-a3b-yesno-baseline
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP1 pid=2157082)[0;0m WARNING 04-27 21:50:54 [multiproc_executor.py:786] WorkerProc was terminated
+[0;36m(EngineCore_DP0 pid=2157074)[0;0m [0;36m(Worker_TP0 pid=2157080)[0;0m WARNING 04-27 21:50:54 [multiproc_executor.py:786] WorkerProc was terminated
+Loading GT from data/annotation/annotation_ag2_filtered.jsonl ...
+  393 records loaded.
+
+================================================================================
+Results: qwen3-30b-a3b-yesno-baseline
+================================================================================
+Traces scored:    393
+Weighted F1:      0.1158
+Macro F1:         0.0811   Macro P: 0.3200   Macro R: 0.0526
+Macro Accuracy:   0.6872
+Kappa (per-label avg): 0.0030   Kappa (pooled): 0.0385   Kappa (per-trace avg): 0.0392
+
+  Mode   Name                                        P      R     F1    Acc      κ  Supp   Det%
+  ------ -------------------------------------- ------ ------ ------ ------ ------ ----- ------
+  1.1    Disobey Task Specification              0.450  0.052  0.094  0.557  0.003   172   5.1%
+  1.2    Disobey Role Specification              0.000  0.000  0.000  0.980 -0.004     7   0.2%
+  1.3    Step Repetition                         0.424  0.065  0.112  0.435 -0.040   217   8.4%
+  1.4    Loss of Conversation History            0.000  0.000  0.000  0.888  0.000    44   0.0%
+  1.5    Unaware of Termination Conditions       0.444  0.046  0.084  0.555  0.001   173   4.6%
+  2.1    Conversation Reset                      0.000  0.000  0.000  0.926  0.000    29   0.0%
+  2.2    Fail to Ask for Clarification           0.667  0.060  0.111  0.590  0.043   166   3.8%
+  2.3    Task Derailment                         0.412  0.055  0.097  0.667  0.022   128   4.3%
+  2.4    Information Withholding                 0.000  0.000  0.000  0.947  0.000    21   0.0%
+  2.6    Action-Reasoning Mismatch               0.821  0.116  0.203  0.361  0.035   276   9.9%
+  3.1    Premature Termination                   0.500  0.008  0.015  0.674  0.005   128   0.5%
+  3.2    Weak Verification                       0.121  0.048  0.068  0.723 -0.059    84   8.4%
+  3.3    No or Incorrect Verification            0.321  0.235  0.271  0.631  0.032   115  21.4%
+
+✓ Metrics saved to outputs/qwen3-30b-a3b-yesno-baseline-metrics.json
+END: 2026-04-27 21:50:58 EDT
+Exit code: 0
