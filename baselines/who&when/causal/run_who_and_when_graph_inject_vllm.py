@@ -253,8 +253,14 @@ def build_cumulative_text(steps: list, upto_idx: int, max_chars: int) -> str:
 # ---------------------------------------------------------------------------
 
 def get_w1_pass1_prompt(trace_text: str, task_description: str, graph_guidance: str) -> str:
-    """W1 Pass-1 = MAST W1 yes/no + graph guidance baked in."""
-    graph_block = (graph_guidance + "\n") if graph_guidance else ""
+    """W1 Pass-1 = plain MAST W1 yes/no detection (no graph).
+
+    Mirrors E4 +GI: graph is injected only at Pass-2 via get_pass2_prompt.
+    `graph_guidance` is accepted for backwards-compatibility with callers
+    that still pass it (api_arc, api_deepinfra) but is intentionally unused
+    here so Pass-1 stays graph-free.
+    """
+    del graph_guidance  # explicitly ignored — see docstring
     return (
         "You are an AI assistant tasked with analyzing a multiagent system trace when solving a real-world problem.\n"
         f"The problem is: {task_description}\n\n"
@@ -263,7 +269,6 @@ def get_w1_pass1_prompt(trace_text: str, task_description: str, graph_guidance: 
         f"{DEFINITIONS}\n\n"
         "EXAMPLES OF FAILURE MODES:\n"
         f"{EXAMPLES}\n\n"
-        f"{graph_block}"
         "Identify which failure modes from the taxonomy above are present in the trace, and explain the reason for each.\n\n"
         "Here is the trace:\n"
         f"{trace_text}\n\n"

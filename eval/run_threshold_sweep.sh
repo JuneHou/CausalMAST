@@ -30,12 +30,19 @@
 # Usage (run from MAST/):
 #   eval/run_threshold_sweep.sh <model> [gpus] [output_dir] [backend]
 #
-#   <model>      HuggingFace model id or API model id
-#   [gpus]       CUDA_VISIBLE_DEVICES string (default: 0,1,2,3); ignored for api
+#   <model>      HuggingFace model id, API model id, or bare model name
+#   [gpus]       CUDA_VISIBLE_DEVICES string (default: 0,1,2,3); ignored for
+#                non-vllm backends
 #   [output_dir] base directory (default: outputs_thres); per-threshold
 #                subdirs t<value>/ are created automatically inside it
-#   [backend]    vllm | api (default: inferred from model name;
-#                  gpt-4* / o* / gemini/* / anthropic/* -> api, else -> vllm)
+#   [backend]    vllm | litellm | deepinfra | arc
+#                If omitted, inferred from model name (mirrors TRAIL):
+#                  gemini/*, openai/gpt-4*, openai/o*, anthropic/* -> litellm
+#                  openai/gpt-oss-*, google/*                       -> deepinfra
+#                  <any-other>/<name>                                -> vllm
+#                  <bare-name-no-slash> (e.g. gpt-oss-120b)         -> arc
+#                Override with the 4th arg when the default doesn't fit.
+#                deepinfra requires DEEPINFRA_API_KEY; arc requires ARC_LLM_API_KEY.
 #
 # Override sweep points via env:
 #   THRESHOLDS="0.6 0.5" eval/run_threshold_sweep.sh ...
@@ -43,7 +50,9 @@
 # Examples:
 #   eval/run_threshold_sweep.sh mistralai/Mistral-Small-3.1-24B-Instruct-2503 4,5,6,7
 #   eval/run_threshold_sweep.sh Qwen/QwQ-32B 0,1,2,3
-#   eval/run_threshold_sweep.sh openai/gpt-4o "" outputs_thres api
+#   eval/run_threshold_sweep.sh openai/gpt-4o "" outputs_thres litellm
+#   eval/run_threshold_sweep.sh openai/gpt-oss-20b "" outputs_thres        # deepinfra
+#   eval/run_threshold_sweep.sh gpt-oss-120b "" outputs_thres              # arc
 
 set -euo pipefail
 
@@ -62,20 +71,35 @@ GPUS="${2:-0,1,2,3}"
 OUTDIR="${3:-outputs_thres}"
 BACKEND="${4:-}"
 
-# Infer backend from model name if not specified
+# Infer backend from model name if not specified (mirrors TRAIL's sweep logic)
 if [[ -z "$BACKEND" ]]; then
   case "$MODEL" in
-    openai/gpt-4*|openai/o*|gemini/*|anthropic/*) BACKEND="api"  ;;
-    *)                                             BACKEND="vllm" ;;
+    gemini/*|openai/gpt-4*|openai/o*|anthropic/*) BACKEND="litellm"   ;;
+    openai/gpt-oss-*|google/*)                    BACKEND="deepinfra" ;;
+    */*)                                          BACKEND="vllm"      ;;
+    *)                                            BACKEND="arc"       ;;
   esac
 fi
 
-# Select inner script (+GI only)
+# Select inner script (+GI only). Inner scripts mirror the TRAIL layout in
+# benchmarking/eval/. Missing scripts must be ported from
+# baselines/who&when/causal/run_who_and_when_graph_inject_api_{arc,deepinfra}.py
+# (which already exist in MAST) into eval/.
 case "$BACKEND" in
-  vllm) GI_SCRIPT="eval/full_run_eval_graph_inject.py"     ;;
-  api)  GI_SCRIPT="eval/full_run_eval_graph_inject_api.py" ;;
-  *) echo "ERROR: backend must be vllm or api (got: $BACKEND)" >&2; exit 1 ;;
+  vllm)      GI_SCRIPT="eval/full_run_eval_graph_inject.py"               ;;
+  litellm)   GI_SCRIPT="eval/full_run_eval_graph_inject_api.py"           ;;
+  deepinfra) GI_SCRIPT="eval/full_run_eval_graph_inject_api_deepinfra.py" ;;
+  arc)       GI_SCRIPT="eval/full_run_eval_graph_inject_api_arc.py"       ;;
+  *) echo "ERROR: backend must be vllm | litellm | deepinfra | arc (got: $BACKEND)" >&2; exit 1 ;;
 esac
+
+if [[ ! -f "$GI_SCRIPT" ]]; then
+  echo "ERROR: inner script not found: $GI_SCRIPT" >&2
+  echo "       backend=$BACKEND requires this file. Port the equivalent" >&2
+  echo "       baselines/who&when/causal/run_who_and_when_graph_inject_api_{arc,deepinfra}.py" >&2
+  echo "       into eval/, mirroring full_run_eval_graph_inject.py's MAST-side prompts." >&2
+  exit 1
+fi
 
 # Tensor-parallel size from GPU list (vLLM only)
 TP=""
@@ -130,7 +154,7 @@ run_one() {
   local graph_flags=()
 
   case "$t" in
-    random) graph_flags+=(--random_edges --random_n 11 --random_seed 42) ;;
+    random) graph_flags+=(--random_edges --random_n 11 --random_seed 111) ;;
     *)      graph_flags+=(--corr_threshold "$t") ;;
   esac
 

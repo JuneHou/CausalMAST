@@ -1,0 +1,74 @@
+% ============================================================
+% TABLE 1 — Main Results on the MAST Benchmark (Baseline + +GI)
+%
+% Dataset: AG2 traces, annotation_ag2_filtered.jsonl (N=393)
+% Ground truth: mast_annotation field (human-labeled binary, 13 categories)
+%
+% Methods:
+%   Baseline = MAST original prompt (single-call yes/no, no graph)
+%   +GI      = E4 graph-inject, causal_only (11 intervention-validated
+%              edges, code+name format), two-pass: Pass 1 detects errors,
+%              Pass 2 injects edges originating from detected errors only.
+%
+% Sources:
+%   Baseline (lost outputs): replayed from paper/main_results_table.tex
+%   +GI:
+%     outputs_full/<model>-yesno-graph-inject-codename-causal_only-metrics.json
+%     outputs_think/QwQ-32B-yesno-graph-inject-codename-causal_only-thinking-metrics.json
+%     outputs_full_api/openai-gpt-4o-yesno-graph-inject-codename-causal_only-metrics.json
+%
+% Footnotes:
+%   * QwQ-32B uses enable_thinking.
+%   † Gemma-3-27B: codename edge format shown.
+% ============================================================
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l l rrrrr}
+\toprule
+\textbf{Model} & \textbf{Method} & \textbf{W-F1} & \textbf{Macro-F1} & \textbf{Macro-P} & \textbf{Macro-R} & \textbf{Macro-Acc} \\
+\midrule
+\multirow{2}{*}{Mistral-Small-3.1-24B}
+  & Baseline & \textbf{37.73}     & \textbf{26.86}     & 29.87              & \underline{31.50}  & 62.01              \\
+  & +GI      & \underline{37.01}  & \underline{25.86}  & 28.34              & \textbf{32.09}     & 60.62              \\[3pt]
+\multirow{2}{*}{GPT-oss-120B}
+  & Baseline & 17.84              & 12.74              & 26.28              &  9.47              & 67.02              \\
+  & +GI      & 25.26              & 18.50              & \underline{31.81}  & 17.01              & 65.49              \\[3pt]
+\multirow{2}{*}{GPT-oss-20B}
+  & Baseline & 17.66              & 12.47              & 26.26              &  9.65              & 67.29              \\
+  & +GI      & 21.68              & 16.04              & \textbf{37.11}     & 12.51              & 67.45              \\[3pt]
+\multirow{2}{*}{QwQ-32B$^{*}$}
+  & Baseline & 16.08              & 12.02              & 28.46              &  9.02              & 66.80              \\
+  & +GI      & 13.69              &  9.80              & 29.13              &  6.66              & \underline{68.17}  \\[3pt]
+\multirow{2}{*}{Gemma-3-27B-IT}
+  & Baseline & 14.19              &  8.27              & 18.32              &  5.84              & \textbf{69.13}     \\
+  & +GI      & 20.25              & 14.02              & 23.53              & 11.75              & 67.76              \\
+\midrule
+\multirow{2}{*}{GPT-4o}
+  & Baseline & 22.87              & 16.31              & 28.00              & 14.78              & 65.32              \\
+  & +GI      & 25.70              & 19.10              & 29.26              & 18.36              & 64.81              \\
+\bottomrule
+\end{tabular}
+\caption{%
+  Main results on the MAST benchmark (393 AG2 traces, 13 error categories).
+  \textbf{W-F1}: weighted F1 (weighted by per-category support).
+  \textbf{Macro-F1}: unweighted average F1 across all 13 categories.
+  \textbf{Macro-P} / \textbf{Macro-R} / \textbf{Macro-Acc}: unweighted
+  average precision, recall, and per-category binary accuracy.
+  All metrics in \%.
+  \textbf{Baseline}: MAST's original single-call yes/no prompt with no graph.
+  \textbf{+GI}: two-pass dynamic graph injection -- Pass~1 detects errors
+  with no graph, Pass~2 injects only edges originating from detected
+  errors. The injected graph is the 11 intervention-validated causal
+  edges (\texttt{causal\_only}) in code+name format.
+  \textbf{Bold}: best result in each column;
+  \underline{underline}: second-best.
+  Horizontal rule separates open-weights (top) from closed-source (bottom).
+  $^{*}$QwQ-32B uses chain-of-thought reasoning (\texttt{enable\_thinking}).
+  %
+}
+\label{tab:mast_main_results}
+\end{table*}

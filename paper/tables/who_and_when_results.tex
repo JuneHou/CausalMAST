@@ -1,0 +1,81 @@
+% ============================================================
+% TABLE 2 — Who&When Adaptation on MAST (Baseline + Graph)
+%
+% Dataset: AG2 traces, annotation_ag2_filtered.jsonl (N=393)
+% Ground truth: mast_annotation field (human-labeled binary, 13 categories)
+%
+% Methods (see paper/baseline_who_and_when.tex for full prompt details):
+%   W1     = Yin et al. all-at-once; one LLM call per trace, full taxonomy
+%            shown, 13-bit yes/no vector emitted directly.
+%   W2     = Yin et al. step-by-step; for each step i the model sees the
+%            cumulative history up to step i and emits a per-step 13-bit
+%            vector. The trace-level prediction is the OR-aggregate.
+%   W1+GI  = W1 prompt with two-pass dynamic graph injection (causal_only).
+%   W2+CG  = W2 prompt with the causal-only graph prepended as static
+%            context to every per-step call.
+%
+% Sources:
+%   baselines/who&when/outputs/<model>-yesno-who_and_when_{w1,w2}-metrics.json
+%   baselines/who&when/outputs/<model>-yesno-who_and_when_w1_graph_inject_causal_only-metrics.json
+%   baselines/who&when/outputs/<model>-yesno-who_and_when_w2_graph_causal_only{,_span_index}-metrics.json
+%   baselines/who&when/causal/outputs/  (used for Mistral W1+GI duplicate)
+%
+% Coverage note: QwQ-32B has only W1 and W2 baselines; the two graph
+% variants were not run for QwQ. Cells marked "--".
+% ============================================================
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l l rr}
+\toprule
+\textbf{Model} & \textbf{Method} & \textbf{W-F1} & \textbf{Macro-F1} \\
+\midrule
+\multirow{4}{*}{Mistral-Small-3.1-24B}
+  & W1     & 23.08              & 15.86              \\
+  & W2     &  5.89              &  3.82              \\
+  & W1+GI  & 28.12              & 20.15              \\
+  & W2+CG  &  7.36              &  4.90              \\[3pt]
+\multirow{4}{*}{GPT-oss-120B}
+  & W1     & 22.85              & 16.14              \\
+  & W2     & \underline{29.44}  & \underline{21.29}  \\
+  & W1+GI  & 25.65              & 18.39              \\
+  & W2+CG  & \textbf{30.81}     & \textbf{21.75}     \\[3pt]
+\multirow{4}{*}{GPT-oss-20B}
+  & W1     & 16.36              & 11.31              \\
+  & W2     & 26.55              & 19.15              \\
+  & W1+GI  & 17.17              & 11.86              \\
+  & W2+CG  & 26.83              & 19.24              \\[3pt]
+\multirow{4}{*}{Gemma-3-27B-IT}
+  & W1     & 18.13              & 11.62              \\
+  & W2     & 11.84              &  8.65              \\
+  & W1+GI  & 25.41              & 18.07              \\
+  & W2+CG  & 12.31              &  9.11              \\[3pt]
+\multirow{4}{*}{QwQ-32B$^{*}$}
+  & W1     & 16.96              & 12.72              \\
+  & W2     & 18.28              & 12.84              \\
+  & W1+GI  &   --               &   --               \\
+  & W2+CG  &   --               &   --               \\
+\bottomrule
+\end{tabular}
+\caption{%
+  Who\&When adaptation results on MAST (393 AG2 traces, all metrics in \%).
+  \textbf{W1}: Yin et al.'s all-at-once attribution adapted to a
+  trace-level 13-bit yes/no vector (one call per trace).
+  \textbf{W2}: step-by-step attribution OR-aggregated over steps
+  ($N$ calls per trace).
+  \textbf{W1+GI}: W1 prompt with two-pass dynamic graph injection
+  (causal-only, 11 intervention-validated edges).
+  \textbf{W2+CG}: W2 prompt with the causal-only graph prepended as
+  static context to every per-step call.
+  \textbf{Bold}: best result in each column;
+  \underline{underline}: second-best.
+  See Appendix~\ref{app:whoandwhen_mast} for full prompt details and
+  the W1/W2 adaptation audit.
+  $^{*}$QwQ-32B uses \texttt{enable\_thinking}; the W1+GI and W2+CG
+  variants were not run for this model, so those cells are omitted.%
+}
+\label{tab:mast_who_and_when}
+\end{table}

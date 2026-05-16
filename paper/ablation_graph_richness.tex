@@ -1,149 +1,214 @@
 % ============================================================
-% ABLATION — Graph Richness on MAST (causal-only + corr sweep + random)
+% ABLATION — Graph Richness on MAST (4-point sweep + null-graph control)
 %
-% Purpose: parallel to the TRAIL ablation. Show how expanding the
-% injected graph from the 11 intervention-validated causal edges to
-% the larger Suppes-screened observational sets affects both +CG
-% (one-pass static) and +GI (two-pass injection) on the MAST
-% open-source panel. The sweep is anchored against a 11-edge
-% random-non-Suppes null-graph control to verify that gains are
-% structural, not driven by edge count alone.
+% Methodology paragraph (for inclusion in the paper body):
+% --------------------------------------------------------
 %
-% Threshold score (matches TRAIL's ablation):
-%   score(A->B) = sqrt(precedence(A,B) * Delta_PR(A,B))
-% where precedence and Delta_PR = P(B|A) - P(B|~A) are the two
-% graded Suppes statistics surviving screening; the third Suppes
-% signal (temporal precedence cutoff) is a binary directional gate
-% applied upstream during graph construction.
+% \paragraph{Graph-richness ablation.}
+% To isolate the contribution of edge-set richness from that of the
+% injection architecture, we ablate the size of the causal graph
+% supplied at inference time while holding every other component fixed.
+% Beyond the \textsc{causal-only} graph (the 11 intervention-validated
+% edges used in the main results), we sweep three correlation
+% thresholds $\tau\in\{0.60,\,0.50,\,0.40\}$ that admit increasingly
+% rich subsets of the Suppes candidate pool, and a null-graph
+% \textsc{random-11} control that samples 11 directed edges uniformly
+% from the 13-category MAST taxonomy excluding all Suppes-screened
+% pairs (seed fixed at 42).
+% Each candidate edge $A\!\to\!B$ in the Suppes pool receives a
+% \emph{geometric-mean score}
+% $\mathrm{score}(A\!\to\!B)=\sqrt{P(A\text{ precedes }B\mid \text{both})\;\cdot\;\Delta_{\mathrm{PR}}(A\!\to\!B)}$,
+% where the first factor is the empirical temporal-precedence rate and
+% $\Delta_{\mathrm{PR}}(A\!\to\!B)=P(B\mid A)-P(B\mid \neg A)$ is the
+% Suppes probability-raising signal. These are the two graded Suppes
+% statistics used to admit edges in the screening stage, and they are
+% independent (precedence is computed only on traces where both $A$
+% and $B$ occur, while $\Delta_{\mathrm{PR}}$ contrasts $B$'s rate
+% under presence vs.\ absence of $A$). Both factors lie in $[0,1]$,
+% so the geometric mean is monotone in each and penalises edges that
+% are strong on only one criterion. At each $\tau$ the
+% corr~$\geq\tau$ edge set is the union of (i) all Suppes edges with
+% geomean $\geq\tau$ and (ii) the 11 intervention-validated causal
+% edges (kept regardless of geomean so that no main-result edge is
+% dropped by the threshold filter). The three points yield edge-set
+% sizes $\{18,25,29\}$, anchored against \textsc{causal-only} ($11$)
+% and \textsc{random-11} ($11$, null-graph control).
+% We hold the threshold and edge set fixed across models and
+% evaluate the two-pass dynamic injection variant (+GI) under each:
+% Pass~1 detects errors with no graph and Pass~2 injects only the
+% targeted subgraph rooted at the detected errors. The ablation is
+% scoped to the open-source panel; closed-source GPT-4o is excluded
+% so that the contrast cannot be confounded by API-side behaviour.
 %
-% Sweep points (N=393 traces in every cell):
-%   causal-only (11 edges)         -- intervention-validated anchor
-%   random-11   (11 edges, seed=42)-- null-graph control
-%   corr 0.60   (~18 union edges)  -- just above causal-only count
-%   corr 0.50   (~25 union edges)  -- mid-sweep
-%   corr 0.40   (~29 union edges)  -- saturating end
+% --------------------------------------------------------
 %
-% Source paths (placeholder; populated after re-running under the
-% new score sqrt(precedence * pr_delta)):
-%   *-yesno-{with-graph,graph-inject}-codename-causal_only-metrics.json
-%   *-yesno-{with-graph,graph-inject}-codename-random11_seed42-metrics.json
-%   *-yesno-{with-graph,graph-inject}-codename-corr0.<TAU>-metrics.json
-%   Closed-source models (GPT-4o) deliberately excluded — ablation
-%   scoped to open-source panel only.
+% Purpose: trace how W-F1 and Macro-F1 respond as the injected
+% graph grows from 11 random edges (null control) to 29
+% observationally-screened edges, with the intervention-validated
+% causal-only graph (11 edges) as the inductive-bias anchor.
 %
-% NOTE: The data rows below were produced under the previous score
-% sqrt(P(B|A) * pr_delta) at t=0.2 and are therefore stale. They
-% will be replaced after re-running the sweep under the new score.
+% Sources (N=393 AG2 traces per cell):
+%   causal-only +GI : outputs_full/*-yesno-graph-inject-codename-causal_only-metrics.json
+%                     (QwQ: outputs_think/QwQ-32B-yesno-graph-inject-codename-causal_only-thinking-metrics.json)
+%   random-11   +GI : outputs_thres/t_random11_seed42/*-yesno-graph-inject-codename-random11_seed42-metrics.json
+%   corr>=0.60  +GI : outputs_thres/t0.6/*-yesno-graph-inject-codename-corr0.6-metrics.json
+%   corr>=0.50  +GI : outputs_thres/t0.5/*-yesno-graph-inject-codename-corr0.5-metrics.json
+%   corr>=0.40  +GI : outputs_thres/t0.4/*-yesno-graph-inject-codename-corr0.4-metrics.json
+%
+% Edge sets (from suppes_graph.json + effect_edges.json):
+%   random-11   : 11 random directed edges (seed 42)
+%   causal-only : 11 intervention-validated edges
+%   corr >=0.60 : 18 edges (causal-only union with geomean>=0.60)
+%   corr >=0.50 : 25 edges
+%   corr >=0.40 : 29 edges
+%
+% Scope: 5-model open-source panel (Mistral-Small-3.1-24B,
+% GPT-oss-120B, GPT-oss-20B, Gemma-3-27B-IT, QwQ-32B with thinking
+% enabled). All cells N=393. Closed-source GPT-4o excluded by design.
+%
+% NOTE: Causal-only +GI cells refreshed 2026-05-14 after a parser
+% fix for the GPT-oss outputs (GPT-oss-120B / GPT-oss-20B / Gemma
+% moved upward; Mistral and QwQ unchanged). The sweep cells use the
+% new score sqrt(precedence * pr_delta) at thresholds {0.4, 0.5, 0.6}.
 % Mistral checkpoint identity verified: re-running causal-only +CG
-% under the default --model (Instruct-2503, output saved to
-% outputs_test/) reproduces W-F1 = 51.16, within ~3.8 pts of the
-% current causal-only +CG (47.31). The two runs use the same
-% upstream weights; "v2" was a cosmetic --model_tag string only.
+% under the default --model (Instruct-2503) reproduces W-F1 = 51.16,
+% within ~3.8 pts of the main-table causal-only +CG (47.31); the two
+% runs use the same upstream weights, "v2" was a cosmetic --model_tag
+% string only.
 % ============================================================
 
-\begin{table*}[t]
+\begin{table}[t]
 \centering
 \small
 \setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.2}
-\begin{tabular}{l l rr @{\hspace{10pt}} rr @{\hspace{10pt}} rr}
+\begin{tabular}{l l rr}
 \toprule
-\multirow{2}{*}{\textbf{Model}} &
-\multirow{2}{*}{\textbf{Method}} &
-\multicolumn{2}{c}{\textbf{causal-only (7 edges)}} &
-\multicolumn{2}{c}{\textbf{geomean ${\geq}0.2$}} &
-\multicolumn{2}{c}{\textbf{$\Delta$}} \\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
-& & W-F1 & Macro-F1 & W-F1 & Macro-F1 & W-F1 & Macro-F1 \\
+\textbf{Model} & \textbf{Graph Variant (\#edges)} & \textbf{W-F1} & \textbf{Macro-F1} \\
 \midrule
-\multirow{2}{*}{Mistral-Small-3.1-24B}
-  & +CG & \textbf{47.31} & \textbf{32.95} & 37.47 & 25.25 & $-9.84$ & $-7.70$ \\
-  & +GI & 37.01 & 25.86 & \textbf{38.88} & \textbf{27.19} & $+1.87$ & $+1.33$ \\[3pt]
-\multirow{2}{*}{GPT-oss-120B}
-  & +CG & 21.62 & 15.14 & \textbf{23.62} & \textbf{17.06} & $+2.00$ & $+1.92$ \\
-  & +GI & 22.68 & 16.44 & \textbf{25.64} & \textbf{19.02} & $+2.96$ & $+2.58$ \\[3pt]
-\multirow{2}{*}{GPT-oss-20B}
-  & +CG & 18.72 & \textbf{13.14} & 18.98 & 13.09 & $+0.26$ & $-0.05$ \\
-  & +GI & 18.84 & 14.00 & \textbf{22.05} & \textbf{17.44} & $+3.21$ & $+3.44$ \\[3pt]
-\multirow{2}{*}{Gemma-3-27B-IT}
-  & +CG & 13.23 & \textbf{9.91} & \textbf{13.76} & 9.59 & $+0.53$ & $-0.32$ \\
-  & +GI & 14.12 & 8.36 & \textbf{21.65} & \textbf{14.75} & $+7.53$ & $+6.39$ \\[3pt]
-\multirow{2}{*}{QwQ-32B$^{\dagger}$}
-  & +CG & \textbf{15.13} & \textbf{10.58} & 12.22 & 8.92 & $-2.91$ & $-1.66$ \\
-  & +GI & 13.69 & 9.80 & \textbf{16.17} & \textbf{11.81} & $+2.48$ & $+2.01$ \\
+\multirow{5}{*}{Mistral-Small-3.1-24B}
+  & random-11        (11) & 36.88          & 25.92          \\
+  & causal-only      (11) & 37.01          & 25.86          \\
+  & corr~$\geq$~0.60 (18) & 36.95          & 25.97          \\
+  & corr~$\geq$~0.50 (25) & 37.40          & 26.30          \\
+  & corr~$\geq$~0.40 (29) & \textbf{38.29} & \textbf{26.97} \\[3pt]
+\multirow{5}{*}{GPT-oss-120B}
+  & random-11        (11) & 25.15          & 18.72          \\
+  & causal-only      (11) & 25.26          & 18.50          \\
+  & corr~$\geq$~0.60 (18) & 24.72          & 18.18          \\
+  & corr~$\geq$~0.50 (25) & 27.21          & 19.63          \\
+  & corr~$\geq$~0.40 (29) & \textbf{27.95} & \textbf{20.55} \\[3pt]
+\multirow{5}{*}{GPT-oss-20B}
+  & random-11        (11) & 21.05          & \textbf{16.33} \\
+  & causal-only      (11) & 21.68          & 16.04          \\
+  & corr~$\geq$~0.60 (18) & 20.35          & 15.29          \\
+  & corr~$\geq$~0.50 (25) & \textbf{22.34} & 15.94          \\
+  & corr~$\geq$~0.40 (29) & 20.76          & 14.66          \\[3pt]
+\multirow{5}{*}{Gemma-3-27B-IT}
+  & random-11        (11) & 16.95          & 13.11          \\
+  & causal-only      (11) & 20.25          & 14.02          \\
+  & corr~$\geq$~0.60 (18) & 19.39          & 13.54          \\
+  & corr~$\geq$~0.50 (25) & \textbf{21.17} & \textbf{14.56} \\
+  & corr~$\geq$~0.40 (29) & 20.52          & 13.70          \\[3pt]
+\multirow{5}{*}{QwQ-32B$^{\dagger}$}
+  & random-11        (11) & \textbf{16.08} & \textbf{12.69} \\
+  & causal-only      (11) & 13.69          &  9.80          \\
+  & corr~$\geq$~0.60 (18) & 15.57          & 11.43          \\
+  & corr~$\geq$~0.50 (25) & 15.61          & 11.47          \\
+  & corr~$\geq$~0.40 (29) & 16.01          & 11.75          \\
 \bottomrule
 \end{tabular}
 \caption{%
-  Ablation: graph-richness on MAST ($N{=}393$ AG2 traces, all metrics in \%).
-  \textbf{causal-only}: 11 intervention-validated CAPRI-BIC edges.
-  \textbf{corr ${\geq}\tau$}: Suppes-screened edges whose geomean score
-  $\sqrt{\mathrm{precedence}\cdot\Delta_{\mathrm{PR}}} \geq \tau$, unioned
-  with the 11 causal edges; sweep points $\tau\in\{0.60,0.50,0.40\}$ give
-  union sizes $\{18,25,29\}$. \textbf{random-11}: 11 directed edges sampled
-  uniformly (seed $42$) from the 13-category MAST taxonomy excluding all
-  Suppes pairs; null-graph control, count-matched to causal-only.
-  \textbf{+CG}: one-pass static graph injected before yes/no questions.
-  \textbf{+GI}: two-pass dynamic injection — Pass~1 detects errors,
-  Pass~2 injects only edges originating from detected errors.
-  Bold: best within each row pair (within model, within method).
-  Ablation scoped to the open-source panel; GPT-4o omitted.
-  $^{\dagger}$QwQ-32B is run with thinking enabled. The
-  causal-only +CG cell uses \texttt{with-graph-causal\_only-thinking}
-  (no codename suffix); the corresponding t0.2 cell uses
-  \texttt{with-graph-codename-t0.2-thinking} — the codename mismatch
-  on the +CG row is analogous to the Mistral-checkpoint identity
-  caveat noted above and does not affect the cross-threshold contrast.%
+  Ablation: graph-richness sweep on MAST ($N{=}393$ AG2 traces, all
+  metrics in \%) under the two-pass dynamic injector (+GI).
+  \textbf{random-11}: 11 directed edges sampled uniformly (seed $42$)
+  from the 13-category MAST taxonomy excluding all Suppes-screened
+  pairs; null-graph control matched in edge count to causal-only.
+  \textbf{causal-only}: the 11 intervention-validated CAPRI-BIC edges
+  used in the main-results table, the inductive-bias anchor.
+  \textbf{corr~${\geq}\tau$}: at each sweep point
+  $\tau\in\{0.60,0.50,0.40\}$, the union of (i) Suppes-screened edges
+  with geomean
+  $\sqrt{P(A\text{ precedes }B\mid\text{both})\cdot\Delta_{\mathrm{PR}}(A\!\to\!B)}\geq\tau$
+  and (ii) the 11 intervention-validated causal edges (kept regardless
+  of geomean), giving union sizes $\{18,25,29\}$.
+  Bold: best per (model, metric) across the five variants.
+  Ablation scoped to the open-source panel; closed-source GPT-4o
+  excluded. $^{\dagger}$QwQ-32B is run with thinking enabled.%
 }
 \label{tab:mast_ablation_graph_richness}
-\end{table*}
+\end{table}
 
 
 % ============================================================
 % Take-aways (for paper text reference; not part of the table):
 %
-% 1. +GI absorbs the larger graph uniformly across all 4 open-source
-%    models (+1.87 to +7.53 W-F1). Same direction as the TRAIL
-%    ablation: two-pass targeted injection scales gracefully with
-%    graph size.
+% 1. Inductive bias (causal-only) vs. null-graph (random-11) at matched
+%    edge count (11 vs 11). On the five-model panel, causal-only beats
+%    random-11 on W-F1 in 4 of 5 models -- Mistral (37.01 vs 36.88),
+%    GPT-oss-120B (25.26 vs 25.15), GPT-oss-20B (21.68 vs 21.05), and
+%    Gemma (20.25 vs 16.95). QwQ-32B is the exception: random-11
+%    (16.08) > causal-only (13.69) by 2.39 W-F1. On Macro-F1 the picture
+%    is rougher -- causal-only wins on Mistral and Gemma; random-11
+%    wins on GPT-oss-20B, GPT-oss-120B, and QwQ-32B. Net: causal edges
+%    are the right inductive prior for most cells on the headline W-F1
+%    metric, but the gap at matched edge count is small (<= 1 W-F1 on
+%    Mistral / GPT-oss-120B / GPT-oss-20B) and Gemma is the only model
+%    where causal-only convincingly outperforms the random control
+%    (+3.30 W-F1).
 %
-% 2. +CG behaves inconsistently with the larger graph:
-%      Mistral  : -9.84 W-F1  (substantial regression)
-%      GPT-120B : +2.00
-%      GPT-20B  : +0.26 (essentially flat)
-%      Gemma    : +0.53
-%    Confirms that the one-pass static-graph variant does not scale
-%    to richer edge sets. Important for the paper because Mistral
-%    +CG (causal-only) is the headline winner of the MAST main
-%    table at 47.31 W-F1 -- demonstrating that this peak is
-%    fragile to graph expansion.
+% 2. Graph richness lifts W-F1 on the four non-QwQ models. Going from
+%    11 causal edges to 29 corr>=0.40 edges yields:
+%      Mistral       : 37.01 -> 38.29   (+1.28)
+%      GPT-oss-120B  : 25.26 -> 27.95   (+2.69)
+%      GPT-oss-20B   : 21.68 -> 20.76   (-0.92)   <-- regresses at saturating end
+%      Gemma         : 20.25 -> 20.52   (+0.27)   <-- essentially flat
+%      QwQ-32B       : 13.69 -> 16.01   (+2.32)
+%    The corr>=0.40 (saturating) point is not uniformly the best:
+%    GPT-oss-20B peaks at corr>=0.50 and then drops by corr>=0.40;
+%    Gemma also peaks at corr>=0.50; QwQ peaks at random-11 then
+%    monotonically approaches but never recovers it. The intermediate
+%    corr>=0.50 (25 edges) point is the most consistent: all five
+%    models improve from causal-only at this threshold
+%    (Mistral +0.39, GPT-oss-120B +1.95, GPT-oss-20B +0.66, Gemma
+%    +0.92, QwQ +1.92).
 %
-% 3. Cross-benchmark consistency: on TRAIL (open-source panel),
-%    corr>=0.2 +GI+SI also wins on 3 of 4 models with comparable
-%    magnitudes (Mistral +6.17, GPT-120B +6.30, GPT-20B +9.75 W-F1
-%    on GAIA_dedup). The two-pass GI architecture's robustness to
-%    graph richness is a benchmark-independent finding.
+% 3. Best-threshold disagrees across (model, metric):
+%      - W-F1 winners : corr>=0.40 (Mistral, GPT-oss-120B),
+%                       corr>=0.50 (GPT-oss-20B, Gemma),
+%                       random-11   (QwQ-32B).
+%      - Macro-F1 winners : corr>=0.40 (Mistral, GPT-oss-120B),
+%                           corr>=0.50 (Gemma),
+%                           random-11  (GPT-oss-20B, QwQ-32B).
+%    The corr>=0.60 (18 edges, "just above causal-only count") is
+%    never the best for any (model, metric) cell. The headroom
+%    unlocked by the first 7 added edges is small; most gains come
+%    from doubling the edge set (corr>=0.50 with 25 edges).
 %
-% 4. Gemma is the largest +GI gainer on MAST (+7.53), opposite to
-%    its TRAIL behaviour (corr0.2 +GI+SI regresses by -4.31 on
-%    GAIA_dedup). The TRAIL Gemma regression therefore appears to
-%    be benchmark-specific (likely tied to specific TRAIL categories
-%    that the +6 TRAIL edges activate), not a general "Gemma can't
-%    handle bigger graphs" pattern.
+% 4. Practical recommendation: corr>=0.50 (25 edges) is the most
+%    defensible default for the +GI variant on MAST -- it improves
+%    every model over causal-only on W-F1, peaks for two models
+%    (GPT-oss-20B, Gemma), and is within 0.95 W-F1 of the
+%    per-model optimum elsewhere (Mistral 37.40 vs 38.29 peak,
+%    GPT-oss-120B 27.21 vs 27.95 peak, QwQ 15.61 vs 16.08 peak).
 %
-% 5. Implication: on MAST, the canonical method choice should depend
-%    on graph richness:
-%      - Causal-only: +CG dominates (Mistral 47.31 vs +GI 37.01).
-%      - Larger graph: +GI dominates (Mistral +GI 38.88 vs +CG 37.47).
-%    The cleanest story for the paper is "+GI is robust across graph
-%    sizes; +CG is best only with the small validated-edge set."
+% 5. Cross-benchmark consistency. On TRAIL (open-source panel),
+%    corr>=0.20 +GI+SI lifts W-F1 by +3.23 (Mistral GAIA),
+%    +10.48 (GPT-oss-120B), +8.01 (GPT-oss-20B), and +8.63
+%    (QwenLong); Gemma is the lone regressor (-4.18). On MAST the
+%    +GI gains from causal-only -> saturating threshold are 2--10x
+%    smaller (+1.28 / +2.69 / -0.92 / +0.27 / +2.32 across Mistral
+%    / GPT-oss-120B / GPT-oss-20B / Gemma / QwQ). The directional
+%    finding (+GI absorbs the larger graph without collapse) is
+%    benchmark-independent; the magnitude is benchmark-dependent,
+%    with TRAIL showing the larger headroom.
 %
-% 6. QwQ-32B (reasoning model, thinking enabled) follows the same
-%    qualitative pattern as the other open-source models:
-%      - +CG regresses with the larger graph (-2.91 W-F1, -1.66 Macro)
-%      - +GI gains with the larger graph (+2.48 W-F1, +2.01 Macro)
-%    Magnitudes are smaller than Gemma but in the same direction,
-%    reinforcing the cross-model robustness of the +GI architecture
-%    to graph expansion. Runs use --enable_thinking; the +CG cell uses
-%    the (no-codename) baseline because no codename causal-only run
-%    was produced for QwQ.
+% 6. QwQ-32B is the only model where the null-graph control
+%    (random-11) is the absolute best W-F1 and Macro-F1 cell. Across
+%    the corr>=tau sweep, QwQ shows a clean monotone curve toward
+%    that random-11 anchor (13.69 -> 15.57 -> 15.61 -> 16.01 with
+%    randoms at 16.08), suggesting the +GI variant on QwQ is
+%    edge-count-bottlenecked rather than edge-content-bottlenecked:
+%    once enough edges are present, content quality is secondary.
+%    Runs use --enable_thinking.
 % ============================================================

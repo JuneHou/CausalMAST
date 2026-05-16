@@ -7,9 +7,10 @@ Best current setup: **E3 with-graph, causal_only** (Mistral W-F1=0.4731 codename
 
 ## Currently In Progress
 
-Open-source panel (**Gemma-3-27B, gpt-oss-20b, Mistral-Small-24B, QwQ-32B**).
+Open-source panel (**Gemma-3-27B, gpt-oss-20b, gpt-oss-120b, Mistral-Small-24B, QwQ-32B**).
 Dataset: AG2 (393 traces). No train/test split.
 QwQ-32B: vLLM only (`--enable_thinking`) — not supported on DeepInfra or ARC.
+gpt-oss-120b: ARC API only (too large for the local vLLM nodes).
 
 ### Task 1 — Who&When Baseline (no causal)
 
@@ -19,8 +20,8 @@ Naming: `{model_tag}-yesno-who_and_when_w1` / `{model_tag}-yesno-who_and_when_w2
 | Model | W1 | W2 |
 |---|---|---|
 | Gemma-3-27B | infra | infra |
-| gpt-oss-120b | ✗ | ✗ |
-| gpt-oss-20b | infra | ✗ |
+| gpt-oss-120b | ✓ | ✓ |
+| gpt-oss-20b | infra | infra |
 | Mistral-Small-24B | ✓ | ✓ |
 | QwQ-32B | ✓ | ✓ |
 
@@ -70,8 +71,8 @@ Naming: W1+GI → `{model_tag}-yesno-who_and_when_w1_graph_inject_causal_only`
 | Gemma-3-27B | infra | infra |
 | gpt-oss-120b | ✓ | ✓ |
 | gpt-oss-20b | infra | infra |
-| Mistral-Small-24B | ✗ | ✗ |
-| QwQ-32B | ⚠ broken (0/393) | ✗ |
+| Mistral-Small-24B | ✓ | ✓ |
+| QwQ-32B | ✓ | ✗ |
 
 #### Commands (run from repo root; source API keys first)
 
@@ -111,8 +112,20 @@ CUDA_VISIBLE_DEVICES=<gpus> python "baselines/who&when/causal/run_who_and_when_w
 ### Task 3 — Threshold Sweep (+GI only, τ ∈ {random-11, 0.60, 0.50, 0.40})
 
 Output dir: `outputs_thres/`
-Script: `eval/full_run_eval_graph_inject.py` (+GI, vLLM)
-No DeepInfra/ARC eval sweep scripts for MAST — use vLLM for open-source models.
+Driver: `eval/run_threshold_sweep.sh` (mirrors TRAIL backend inference —
+vllm / litellm / deepinfra / arc routed by model name; see usage block at top
+of the script).
+
+Inner scripts (per backend, all live in `eval/`):
+- `full_run_eval_graph_inject.py`               (vllm) — Gemma, gpt-oss-20b, Mistral, QwQ
+- `full_run_eval_graph_inject_api.py`           (litellm) — Gemini/GPT-4o (closed-source)
+- `full_run_eval_graph_inject_api_deepinfra.py` (deepinfra) — **not yet ported**; required if you want gpt-oss-20b / Gemma over DeepInfra instead of vLLM
+- `full_run_eval_graph_inject_api_arc.py`       (arc)       — **not yet ported**; required for gpt-oss-120b
+
+Porting template: clone `baselines/who&when/causal/run_who_and_when_graph_inject_api_{arc,deepinfra}.py`
+and swap the W&W prompt builder for `full_run_eval_graph_inject.py`'s MAST E4
+prompts (`get_pass1_prompt` / `get_pass2_prompt`). The sweep script already
+errors out cleanly when the chosen backend's inner script is missing.
 
 Causal-only anchors (on disk): Gemma, gpt-oss-20b in `outputs_full/`; QwQ-32B in `outputs_think/`;
 Mistral +GI in `outputs_full_test/` (test run).
@@ -120,11 +133,12 @@ Mistral +GI in `outputs_full_test/` (test run).
 | Model | random-11 | τ=0.60 | τ=0.50 | τ=0.40 |
 |---|---|---|---|---|
 | Mistral-Small-24B | ✓ | ✓ | ✓ | ✓ |
-| Gemma-3-27B | ✗ | ✗ | ✗ | ✗ |
-| gpt-oss-20b | ✗ | ✗ | ✗ | ✗ |
+| Gemma-3-27B | ✓ | ✓ | ✓ | ✓ |
+| gpt-oss-20b | ✓ | ✓ | ✓ | ✓ |
+| gpt-oss-120b (ARC) | ✓ | ✓ | ✓ | ✓ |
 | QwQ-32B | ✓ | ✓ | ✓ | ✓ |
 
-Remaining: 10 cells (Mistral +GI fully done; QwQ +GI random-11 + τ=0.60 done — τ=0.50, τ=0.40 still to go).
+Remaining: 14 cells (Mistral +GI fully done; QwQ +GI random-11 + τ=0.60 done — τ=0.50, τ=0.40 still to go; gpt-oss-120b ARC all 4 to run once the ARC sweep script is in place).
 
 #### Commands (run from repo root; vLLM only)
 
@@ -167,6 +181,13 @@ CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
 CUDA_VISIBLE_DEVICES=<gpus> python eval/full_run_eval_graph_inject.py \
     --model Qwen/QwQ-32B --model_tag QwQ-32B \
     --corr_threshold 0.40 --enable_thinking --output_dir outputs_thres
+
+# === gpt-oss-120b +GI via ARC API — 4 sweep points (all in one driver call) ===
+# Precondition: source path/to/arc_llm_api.sh   → sets ARC_LLM_API_KEY
+# Precondition: eval/full_run_eval_graph_inject_api_arc.py must exist
+#               (see Scripts note above for porting steps).
+# The sweep driver routes "gpt-oss-120b" -> arc automatically.
+bash eval/run_threshold_sweep.sh gpt-oss-120b "" outputs_thres
 ```
 
 Score after sweep:
@@ -177,6 +198,75 @@ for d in outputs_thres/*/*-yesno-*/; do
         --pred_dir "$d"
 done
 ```
+
+### Task 4 — Threshold Sweep (+CG, τ ∈ {random-11, 0.60, 0.50, 0.40})
+
+Sister of Task 3 that runs the **one-pass** in-prompt graph guidance (+CG)
+arm across the same threshold list, so the §4.5 paired-row comparison can
+contrast +CG vs +GI under the same edge sets — mirrors TRAIL Task C.
+
+Output dir: `outputs_thres_cg/` (parallel to `outputs_thres/`).
+Driver: `eval/run_threshold_sweep_cg.sh` (sister of `run_threshold_sweep.sh`).
+
+Inner scripts (per backend, all in `eval/`):
+- `full_run_eval_with_graph.py`                — vllm
+- `full_run_eval_with_graph_api.py`            — litellm
+- `full_run_eval_with_graph_api_deepinfra.py`  — deepinfra (new; mirrors +GI sister)
+- `full_run_eval_with_graph_api_arc.py`        — arc       (new; mirrors +GI sister)
+
+The litellm runner does NOT expose `--random_edges`; the sweep driver skips
+the `random` threshold for that backend with a warning. All other backends
+include random.
+
+Causal-only anchors are on disk already (line 130 — `outputs_full/`,
+`outputs_full_api/`, `outputs_think/`) and re-usable; the sweep adds the
+3 thresholds + random per model.
+
+| Model | random-11 | τ=0.60 | τ=0.50 | τ=0.40 | Backend |
+|---|---|---|---|---|---|
+| Mistral-Small-24B | ⬜ | ⬜ | ⬜ | ⬜ | vllm |
+| Gemma-3-27B | ✓ | ✓ | ✓ | ✓ | vllm or deepinfra |
+| gpt-oss-20b | ⬜ | ⬜ | ⬜ | ⬜ | vllm or deepinfra |
+| gpt-oss-120b (ARC) | ✓ | ✓ | ✓ | ✓ | arc |
+| QwQ-32B | ⬜ | ⬜ | ⬜ | ⬜ | vllm `--enable_thinking` |
+
+Cells: 5 models × 4 settings = **20 runs**.
+
+#### Commands (run from MAST/; same auth as Task 3)
+
+```bash
+# === vLLM — Mistral / Gemma / gpt-oss-20b ===
+bash eval/run_threshold_sweep_cg.sh \
+    mistralai/Mistral-Small-3.1-24B-Instruct-2503 0,1,2,3
+bash eval/run_threshold_sweep_cg.sh openai/gemma-3-27b-it 0,1,2,3
+bash eval/run_threshold_sweep_cg.sh openai/gpt-oss-20b   0,1,2,3
+
+# === vLLM — QwQ-32B  (--enable_thinking auto-added; max_model_len=40960) ===
+bash eval/run_threshold_sweep_cg.sh Qwen/QwQ-32B 0,1,2,3
+
+# === ARC API — gpt-oss-120b  (source path/to/arc_llm_api.sh) ===
+bash eval/run_threshold_sweep_cg.sh gpt-oss-120b "" outputs_thres_cg
+
+# Optional: route Gemma / gpt-oss-20b through DeepInfra instead of vLLM
+#   bash eval/run_threshold_sweep_cg.sh google/gemma-3-27b-it "" outputs_thres_cg
+#   bash eval/run_threshold_sweep_cg.sh openai/gpt-oss-20b   "" outputs_thres_cg
+```
+
+Score after sweep (same loop as Task 3, just swap the path):
+```bash
+for d in outputs_thres_cg/*/*-yesno-*/; do
+    python eval/calculate_scores_yesno.py \
+        --annotation data/annotation/annotation_ag2_filtered.jsonl \
+        --pred_dir "$d"
+done
+```
+
+#### Follow-up
+
+Once complete, regenerate the §4.5 ablation table with paired +CG / +GI rows
+per variant (same paired-rows layout we used in TRAIL Task C). The
+causal-only anchor row comes from the existing `outputs_full/*-yesno-with-graph-codename-causal_only/`
+dirs; no re-run needed.
 
 ---
 
@@ -224,7 +314,6 @@ Both benchmarks (MAST + TRAIL) now use the same threshold semantics: geomean ≥
 ### Dead ends / deprioritized
 - **o1**: omitted from paper (RLHF conservatism + cost).
 - Gemma: under-detection not fixable by edge format; deprioritized.
-- GPT-oss 120B: incomplete run, outperformed by smaller models; deprioritized.
 - Graph-inject for non-thinking open models (Mistral, Gemma, GPT-oss-20B): consistently below E3 for these; no point running more.
 - Full stability graph (t0.5) for Mistral: **done, worse** (0.5237 vs 0.4731 codename — note: t0.5 baseline pre-dates the recent codename re-score, comparison is approximate). causal_only edges are still the canonical choice.
 - E4 + full stability graph: not worth running — E3 t0.5 < E3 causal_only, and E4 already loses ~0.16 to E3 for Mistral.
