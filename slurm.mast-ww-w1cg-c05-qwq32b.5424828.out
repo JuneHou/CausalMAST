@@ -1,0 +1,109 @@
+START: 2026-05-16 14:23:17 EDT
+Host: tc-gpu001
+PWD: /projects/slmreasoning/junh/causal-error/CausalMAST
+Python 3.10.0
+[INFO] Reasoning model detected (/common/data/models/qwen--QwQ-32B); bumping max_tokens 2000 -> 16000
+Graph: 25 edges (corr0.5)
+  2.1(Conversation Reset) -> 1.4(Loss of Conversation History)  (0.807)
+  1.2(Disobey Role Specification) -> 1.4(Loss of Conversation History)  (0.766)
+  2.1(Conversation Reset) -> 1.5(Unaware of Termination Conditions)  (0.717)
+  1.4(Loss of Conversation History) -> 1.5(Unaware of Termination Conditions)  (0.699)
+  2.4(Information Withholding) -> 1.5(Unaware of Termination Conditions)  (0.684)
+  1.2(Disobey Role Specification) -> 3.3(No or Incorrect Verification)  (0.647)
+  2.4(Information Withholding) -> 3.1(Premature Termination)  (0.640)
+  2.4(Information Withholding) -> 1.4(Loss of Conversation History)  (0.618)
+  2.1(Conversation Reset) -> 1.3(Step Repetition)  (0.598)
+  1.2(Disobey Role Specification) -> 2.2(Fail to Ask for Clarification)  (0.575)
+  2.1(Conversation Reset) -> 3.3(No or Incorrect Verification)  (0.566)
+  1.2(Disobey Role Specification) -> 1.3(Step Repetition)  (0.558)
+  1.3(Step Repetition) -> 1.5(Unaware of Termination Conditions)  (0.543)
+  2.4(Information Withholding) -> 3.3(No or Incorrect Verification)  (0.532)
+  2.3(Task Derailment) -> 1.5(Unaware of Termination Conditions)  (0.514)
+  ... and 10 more
+
+Loaded 393 traces from data/annotation/annotation_ag2_filtered.jsonl
+Output dir: /projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/qwq-32b-yesno-who_and_when_w1_graph_corr0.5-thinking
+Pending: 393 (skipping 0 already done)
+
+Loading model: /common/data/models/qwen--QwQ-32B  (tp=4)
+INFO 05-16 14:23:27 [utils.py:261] non-default args: {'trust_remote_code': True, 'max_model_len': 40960, 'tensor_parallel_size': 4, 'disable_log_stats': True, 'model': '/common/data/models/qwen--QwQ-32B'}
+INFO 05-16 14:23:27 [model.py:541] Resolved architecture: Qwen2ForCausalLM
+INFO 05-16 14:23:27 [model.py:1561] Using max model len 40960
+INFO 05-16 14:23:27 [scheduler.py:226] Chunked prefill is enabled with max_num_batched_tokens=8192.
+INFO 05-16 14:23:27 [vllm.py:624] Asynchronous scheduling is enabled.
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:27 [core.py:96] Initializing a V1 LLM engine (v0.15.1) with config: model='/common/data/models/qwen--QwQ-32B', speculative_config=None, tokenizer='/common/data/models/qwen--QwQ-32B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=40960, download_dir=None, load_format=auto, tensor_parallel_size=4, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=0, served_model_name=/common/data/models/qwen--QwQ-32B, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'level': None, 'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'splitting_ops': ['vllm::unified_attention', 'vllm::unified_attention_with_output', 'vllm::unified_mla_attention', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::gdn_attention_core', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::unified_kv_cache_update'], 'compile_mm_encoder': False, 'compile_sizes': [], 'compile_ranges_split_points': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'eliminate_noops': True, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': True}, 'local_cache_dir': None, 'static_all_moe_layers': []}
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m WARNING 05-16 14:23:27 [multiproc_executor.py:910] Reducing Torch parallelism from 32 threads to 1 to avoid unnecessary CPU contention. Set OMP_NUM_THREADS in the external environment to tune this value as needed.
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:32 [parallel_state.py:1212] world_size=4 rank=2 local_rank=2 distributed_init_method=tcp://127.0.0.1:54581 backend=nccl
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:32 [parallel_state.py:1212] world_size=4 rank=3 local_rank=3 distributed_init_method=tcp://127.0.0.1:54581 backend=nccl
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:32 [parallel_state.py:1212] world_size=4 rank=1 local_rank=1 distributed_init_method=tcp://127.0.0.1:54581 backend=nccl
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:37 [parallel_state.py:1212] world_size=4 rank=0 local_rank=0 distributed_init_method=tcp://127.0.0.1:54581 backend=nccl
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:40 [pynccl.py:111] vLLM is using nccl==2.27.5
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m WARNING 05-16 14:23:40 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m WARNING 05-16 14:23:40 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(EngineCore_DP0 pid=1969089)[0;0m WARNING 05-16 14:23:40 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+WARNING 05-16 14:23:40 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.0 not supported, communicator is not available.
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:40 [parallel_state.py:1423] rank 2 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 2, EP rank N/A
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:40 [parallel_state.py:1423] rank 3 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 3, EP rank N/A
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:40 [parallel_state.py:1423] rank 1 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 1, EP rank N/A
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:23:40 [parallel_state.py:1423] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank N/A
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:23:41 [gpu_model_runner.py:4033] Starting to load model /common/data/models/qwen--QwQ-32B...
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:23:44 [cuda.py:364] Using FLASH_ATTN attention backend out of potential backends: ('FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION')
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:00 [default_loader.py:291] Loading weights took 75.17 seconds
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:00 [gpu_model_runner.py:4130] Model loading took 15.41 GiB memory and 78.404191 seconds
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:13 [backends.py:812] Using cache directory: /home/junh/.cache/vllm/torch_compile_cache/2480cd89cd/rank_0_0/backbone for vLLM's torch.compile
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:13 [backends.py:872] Dynamo bytecode transform time: 12.02 s
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP1 pid=1969097)[0;0m INFO 05-16 14:25:38 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 18.263 s
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP3 pid=1969101)[0;0m INFO 05-16 14:25:38 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 18.163 s
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP2 pid=1969099)[0;0m INFO 05-16 14:25:38 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 13.022 s
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:38 [backends.py:267] Directly load the compiled graph(s) for compile range (1, 8192) from the cache, took 18.751 s
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:38 [monitor.py:34] torch.compile takes 30.78 s in total
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:40 [gpu_worker.py:356] Available KV cache memory: 53.95 GiB
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:25:40 [kv_cache_utils.py:1307] GPU KV cache size: 883,840 tokens
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:25:40 [kv_cache_utils.py:1312] Maximum concurrency for 40,960 tokens per request: 21.58x
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:48 [custom_all_reduce.py:216] Registering 11094 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP3 pid=1969101)[0;0m INFO 05-16 14:25:48 [custom_all_reduce.py:216] Registering 11094 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP1 pid=1969097)[0;0m INFO 05-16 14:25:48 [custom_all_reduce.py:216] Registering 11094 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP2 pid=1969099)[0;0m INFO 05-16 14:25:49 [custom_all_reduce.py:216] Registering 11094 cuda graph addresses
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m INFO 05-16 14:25:49 [gpu_model_runner.py:5063] Graph capturing finished in 9 secs, took 0.90 GiB
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m INFO 05-16 14:25:49 [core.py:272] init engine (profile, create kv cache, warmup model) took 48.17 seconds
+INFO 05-16 14:25:53 [llm.py:343] Supported tasks: ['generate']
+[W1] Running inference on 393 traces (batch_size=4)...
+INFO 05-16 14:25:53 [hf.py:310] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+
+Outputs saved to /projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/qwq-32b-yesno-who_and_when_w1_graph_corr0.5-thinking/
+  Next: python eval/calculate_scores_yesno.py --pred_dir "/projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/qwq-32b-yesno-who_and_when_w1_graph_corr0.5-thinking"
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP0 pid=1969095)[0;0m WARNING 05-16 15:40:09 [multiproc_executor.py:786] WorkerProc was terminated
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP2 pid=1969099)[0;0m [0;36m(Worker_TP1 pid=1969097)[0;0m WARNING 05-16 15:40:09 [multiproc_executor.py:786] WorkerProc was terminated
+WARNING 05-16 15:40:09 [multiproc_executor.py:786] WorkerProc was terminated
+[0;36m(EngineCore_DP0 pid=1969089)[0;0m [0;36m(Worker_TP3 pid=1969101)[0;0m WARNING 05-16 15:40:09 [multiproc_executor.py:786] WorkerProc was terminated
+Loading GT from data/annotation/annotation_ag2_filtered.jsonl ...
+  393 records loaded.
+
+================================================================================
+Results: qwq-32b-yesno-who_and_when_w1_graph_corr0.5-thinking
+================================================================================
+Traces scored:    393
+Weighted F1:      0.1581
+Macro F1:         0.1107   Macro P: 0.2785   Macro R: 0.0799
+Macro Accuracy:   0.6823
+Kappa (per-label avg): 0.0027   Kappa (pooled): 0.0543   Kappa (per-trace avg): 0.0548
+
+  Mode   Name                                        P      R     F1    Acc      κ  Supp   Det%
+  ------ -------------------------------------- ------ ------ ------ ------ ------ ----- ------
+  1.1    Disobey Task Specification              0.431  0.128  0.197  0.544 -0.004   172  13.0%
+  1.2    Disobey Role Specification              0.000  0.000  0.000  0.967 -0.017     7   1.5%
+  1.3    Step Repetition                         0.320  0.037  0.066  0.425 -0.054   217   6.4%
+  1.4    Loss of Conversation History            0.000  0.000  0.000  0.885 -0.005    44   0.2%
+  1.5    Unaware of Termination Conditions       0.300  0.035  0.062  0.539 -0.032   173   5.1%
+  2.1    Conversation Reset                      0.000  0.000  0.000  0.926  0.000    29   0.0%
+  2.2    Fail to Ask for Clarification           0.500  0.072  0.126  0.578  0.022   166   6.1%
+  2.3    Task Derailment                         0.500  0.039  0.072  0.674  0.026   128   2.5%
+  2.4    Information Withholding                 0.000  0.000  0.000  0.939 -0.013    21   0.8%
+  2.6    Action-Reasoning Mismatch               0.787  0.228  0.354  0.415  0.056   276  20.4%
+  3.1    Premature Termination                   0.214  0.023  0.042  0.654 -0.024   128   3.6%
+  3.2    Weak Verification                       0.186  0.155  0.169  0.674 -0.032    84  17.8%
+  3.3    No or Incorrect Verification            0.381  0.322  0.349  0.649  0.111   115  24.7%
+
+✓ Metrics saved to /projects/slmreasoning/junh/causal-error/CausalMAST/baselines/who&when/causal/outputs/qwq-32b-yesno-who_and_when_w1_graph_corr0.5-thinking-metrics.json
+END: 2026-05-16 15:40:13 EDT
+Exit code: 0
