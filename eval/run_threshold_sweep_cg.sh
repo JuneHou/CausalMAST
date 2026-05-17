@@ -28,8 +28,7 @@
 #      --random_edges; the 'random' threshold is SKIPPED for litellm with a
 #      warning. All other backends include random.
 #   3. Output root defaults to outputs_thres_cg/ (parallel to outputs_thres/).
-#   4. --span_index is accepted as a CLI-parity no-op by every +CG runner
-#      (MAST has no location prediction), so it never appears here.
+#   4. MAST has no location prediction; --span_index is not used by these runners.
 #
 # Usage (run from MAST/):
 #   eval/run_threshold_sweep_cg.sh <model> [gpus] [output_dir] [backend]

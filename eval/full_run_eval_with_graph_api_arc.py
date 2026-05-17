@@ -227,9 +227,7 @@ def main():
     ap.add_argument("--limit_traces", type=int, default=None,
                     help="Only process the first N pending traces (smoke test).")
 
-    # CLI-parity no-ops with the vLLM script + sweep driver
-    ap.add_argument("--span_index", action="store_true",
-                    help="Accepted for CLI parity; no-op (MAST has no location prediction).")
+    # CLI-parity no-op with the vLLM script + sweep driver
     ap.add_argument("--enable_thinking", action="store_true",
                     help="Accepted for CLI parity; no-op on ARC (thinking inferred from model name).")
 

@@ -166,7 +166,6 @@ run_one() {
       --output_dir "$thres_outdir" \
       "${vllm_flags[@]}" \
       ${ENABLE_THINKING} \
-      --span_index \
       "${graph_flags[@]}" \
       2>&1 | tee "$log"
   else
@@ -174,7 +173,6 @@ run_one() {
       --model "$MODEL" \
       --output_dir "$thres_outdir" \
       ${ENABLE_THINKING} \
-      --span_index \
       "${graph_flags[@]}" \
       2>&1 | tee "$log"
   fi

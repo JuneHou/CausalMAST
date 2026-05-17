@@ -203,9 +203,6 @@ def main():
     ap.add_argument("--corr_threshold", type=float, default=1.0)
     ap.add_argument("--effect_edges", type=str, default=None)
     ap.add_argument("--suppes_graph", type=str, default=None)
-    ap.add_argument("--span_index", action="store_true",
-                    help="Accepted for CLI parity with +GI; no-op on prompts "
-                         "(MAST has no location prediction). Adds _span_index suffix to output dir.")
     ap.add_argument("--limit_traces", type=int, default=None,
                     help="Only process the first N pending traces (smoke test).")
     ap.add_argument("--rpm",  type=int, default=30,
@@ -259,10 +256,9 @@ def main():
 
     model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
     thinking_suffix   = "-thinking" if is_thinking_model else ""
-    span_index_suffix = "_span_index" if args.span_index else ""
     out_dir = os.path.join(
         args.output_dir,
-        f"{model_tag}-yesno-who_and_when_{args.variant}_graph_{graph_tag}{thinking_suffix}{span_index_suffix}",
+        f"{model_tag}-yesno-who_and_when_{args.variant}_graph_{graph_tag}{thinking_suffix}",
     )
     os.makedirs(out_dir, exist_ok=True)
     print(f"Output dir: {out_dir}")

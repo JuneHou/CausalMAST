@@ -1,0 +1,36 @@
+{
+  "rec_id": "0238",
+  "trace_id": 147,
+  "predictions": {
+    "1.1": 1,
+    "1.2": 1,
+    "1.3": 1,
+    "1.4": 0,
+    "1.5": 1,
+    "2.1": 0,
+    "2.2": 1,
+    "2.3": 0,
+    "2.4": 0,
+    "2.6": 1,
+    "3.1": 1,
+    "3.2": 0,
+    "3.3": 1
+  },
+  "raw_response": "@@\nA. Freeform text summary of the problems with the inefficiencies or failure modes in the trace: The conversation never follows the defined agent roles – the Code Executor never runs code, the Verifier never validates anything, and the Problem Solver’s analysis is repeated without progress. The system repeatedly outputs “SUGGESTED NEXT SPEAKER: Agent Code Executor” three times, showing clear step repetition. It also proceeds to a final answer (“None”) without waiting for a response from the supposed Code Executor, indicating unawareness of termination conditions and premature termination. Moreover, the final output does not satisfy the original task specification (select one of the given options), so the task specification is ignored.  \nB. Whether the task is successfully completed or not: no  \nC. Whether you encounter any of the failure modes or inefficiencies:\n1.1 Disobey Task Specification: yes\n1.2 Disobey Role Specification: yes\n1.3 Step Repetition: yes\n1.4 Loss of Conversation History: no\n1.5 Unaware of Termination Conditions: yes\n2.1 Conversation Reset: no\n2.2 Fail to Ask for Clarification: no\n2.3 Task Derailment: no\n2.4 Information Withholding: no\n2.6 Action-Reasoning Mismatch: no\n3.1 Premature Termination: yes\n3.2 Weak Verification: no\n3.3 No or Incorrect Verification: no\n@@",
+  "variant": "w1",
+  "pass2_triggered": true,
+  "pass2_upgrades": {
+    "3.3": 1,
+    "2.2": 1,
+    "2.6": 1
+  },
+  "pass2_raw": "@@\n1.4 Loss of Conversation History: no\n3.3 No or Incorrect Verification: yes\n2.2 Fail to Ask for Clarification: yes\n2.6 Action-Reasoning Mismatch: yes\n@@",
+  "meta": {
+    "n_calls": 1,
+    "n_steps": 8,
+    "graph_tag": "corr0.5",
+    "propagation_threshold": 0.1,
+    "api": "arc",
+    "model": "gpt-oss-120b"
+  }
+}

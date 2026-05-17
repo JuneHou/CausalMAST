@@ -10,8 +10,7 @@ Mirrors:
     graph loading, two graph modes)
 
 Differences vs the TRAIL W&W +CG file:
-  - --span_index accepted but is a no-op on prompts (MAST has no location prediction);
-    it only adds a _span_index suffix to the output directory name.
+  - No --span_index (MAST has no location prediction).
   - No "FINAL LEAF" rule (MAST has a flat 13-code taxonomy, not hierarchical).
   - No "Resource Abuse last instance" rule (no location).
   - Yes/no output format (matches MAST W&W baseline).
@@ -507,9 +506,6 @@ def main():
     ap.add_argument("--gpu_memory_utilization", type=float, default=0.9)
     ap.add_argument("--model_tag", type=str, default=None)
     ap.add_argument("--enable_thinking", action="store_true")
-    ap.add_argument("--span_index", action="store_true",
-                    help="Accepted for CLI parity with +GI; no-op on prompts "
-                         "(MAST has no location prediction). Adds _span_index suffix to output dir.")
     ap.add_argument("--w2_max_history_chars", type=int, default=80000)
     ap.add_argument("--causal_only", action="store_true",
                     help="Use only intervention-validated causal edges.")
@@ -559,10 +555,9 @@ def main():
 
     model_tag = args.model_tag if args.model_tag else args.model.replace("/", "-")
     thinking_suffix   = "-thinking" if args.enable_thinking else ""
-    span_index_suffix = "_span_index" if args.span_index else ""
     out_dir = os.path.join(
         args.output_dir,
-        f"{model_tag}-yesno-who_and_when_{args.variant}_graph_{graph_tag}{thinking_suffix}{span_index_suffix}",
+        f"{model_tag}-yesno-who_and_when_{args.variant}_graph_{graph_tag}{thinking_suffix}",
     )
     os.makedirs(out_dir, exist_ok=True)
     print(f"Output dir: {out_dir}")

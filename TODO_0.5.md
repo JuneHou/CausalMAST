@@ -24,10 +24,30 @@ Create `paper/tables/main_results_0.5.tex` from `main_results.tex`. Open-source
 | Model | Output file |
 |---|---|
 | Mistral-Small-3.1-24B | `outputs_thres/t0.5/mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-graph-inject-codename-corr0.5-metrics.json` |
-| GPT-oss-120B | `outputs_thres/t0.5/gpt-oss-120b-yesno-graph-inject-codename-corr0.5-metrics.json` |
+| GPT-oss-120B (ARC) | `outputs_thres/t0.5/gpt-oss-120b-yesno-graph-inject-codename-corr0.5-metrics.json` — produced via `eval/full_run_eval_graph_inject_api_arc.py` (no GPU); re-run command if needed: see "Re-running the 120B main-table cell" below |
 | GPT-oss-20B | `outputs_thres/t0.5/openai-gpt-oss-20b-yesno-graph-inject-codename-corr0.5-metrics.json` |
 | Gemma-3-27B-IT | `outputs_thres/t0.5/google-gemma-3-27b-it-yesno-graph-inject-codename-corr0.5-metrics.json` |
 | QwQ-32B | `outputs_thres/t0.5/Qwen-QwQ-32B-yesno-graph-inject-codename-corr0.5-thinking-metrics.json` |
+
+#### Re-running the 120B main-table cell (ARC API, no sbatch)
+
+The 120B `+GI corr0.5` metrics file is already on disk. If a re-run is needed
+(e.g., to refresh after a graph artifact change), run from the MAST repo root
+after sourcing the ARC auth key:
+
+```bash
+# Auth: ARC_LLM_API_KEY env var (e.g., source path/to/arc_llm_api.sh)
+# ARC default model is `gpt-oss-120b` (bare name, no `openai/` prefix);
+# --model can be omitted to use the default.
+python eval/full_run_eval_graph_inject_api_arc.py \
+    --corr_threshold 0.5 \
+    --output_dir outputs_thres/t0.5
+```
+
+ARC fairshare limits (30 rpm, 1000 rph, 3000 per 3hr) apply. A full 393-trace
++GI run does Pass-1 once per trace plus Pass-2 on the subset whose Pass-1
+detections propagate; expect ~30-40 min real-time. Resumable (skips existing
+per-trace files).
 
 Missing cell:
 
@@ -75,6 +95,8 @@ GPT-4o excluded from ablation by scope (same as TRAIL's handling of Gemini).
 `paper/tables/who_and_when_results.tex` currently uses causal-only for all
 W1+GI and W2+CG rows. No τ=0.50 who&when outputs exist anywhere yet.
 
+Note: MAST has no location labels. Do not pass `--span_index` to MAST runners.
+
 Runners support `--corr_threshold 0.5`. Output naming convention:
 - W1+GI: `*-yesno-who_and_when_w1_graph_inject_corr0.5`
 - W2+CG: `*-yesno-who_and_when_w2_graph_corr0.5`
@@ -89,7 +111,7 @@ All models run via ARC vLLM (local GPU), not DeepInfra.
 | Mistral-Small-3.1-24B | `run_ww_w1_gi_corr05_mistral24b.sbatch` ☐ | `run_ww_w1_cg_corr05_mistral24b.sbatch` ☐ | `run_ww_w2_cg_corr05_mistral24b.sbatch` ☐ | 2 | `w1_cg/run_ww_w1_cg_mistral24b.sbatch` |
 | GPT-oss-20B | `run_ww_w1_gi_corr05_gpt20b.sbatch` ☐ | `run_ww_w1_cg_corr05_gpt20b.sbatch` ☐ | `run_ww_w2_cg_corr05_gpt20b.sbatch` ☐ | 4 | `w1_cg/run_ww_w1_cg_gpt20b.sbatch` |
 | Gemma-3-27B-IT | `run_ww_w1_gi_corr05_gemma27b.sbatch` ☐ | `run_ww_w1_cg_corr05_gemma27b.sbatch` ☐ | `run_ww_w2_cg_corr05_gemma27b.sbatch` ☐ | 2 | `w1_cg/run_ww_w1_cg_gemma27b.sbatch` |
-| GPT-oss-120B | — | — | — | — | run separately (see below) |
+| GPT-oss-120B (ARC) | bash (see below) | bash (see below) | bash (see below) | n/a | run via ARC API — no sbatch, no GPU |
 | QwQ-32B | `run_ww_w1_gi_corr05_qwq32b.sbatch` ☐ | `run_ww_w1_cg_corr05_qwq32b.sbatch` ☐ | `run_ww_w2_cg_corr05_qwq32b.sbatch` ☐ | 4 | `run_ww_w1_gi_qwq32b.sbatch` |
 
 Key changes from source sbatch (applied to all):
@@ -127,6 +149,50 @@ sbatch sbatch/ww_corr05/run_ww_w2_cg_corr05_gemma27b.sbatch
 sbatch sbatch/ww_corr05/run_ww_w2_cg_corr05_qwq32b.sbatch
 ```
 
+### GPT-oss-120B — ARC API (bash, no sbatch, no GPU)
+
+ARC is API-only, so 120B does not get an sbatch wrapper. Run directly from the
+MAST repo root after sourcing the ARC auth key. The ARC scripts default
+`--model` to `gpt-oss-120b` (bare name, no `openai/` prefix), so it can be
+omitted.
+
+```bash
+# ============================================================
+# Auth: source path/to/arc_llm_api.sh   → sets ARC_LLM_API_KEY
+# Rate limits: 30 rpm, 1000 rph, 3000 per 3hr (3-rule sliding window)
+# Resumable: skips existing per-trace files in --output_dir
+# ============================================================
+
+# W1+GI (Pass-1 + targeted Pass-2; ~30-40 min real-time over 393 traces)
+python "baselines/who&when/causal/run_who_and_when_graph_inject_api_arc.py" \
+    --variant w1 --corr_threshold 0.5 \
+    --output_dir "baselines/who&when/causal/outputs"
+
+# W1+CG (one-pass)
+python "baselines/who&when/causal/run_who_and_when_with_graph_api_arc.py" \
+    --variant w1 --corr_threshold 0.5 \
+    --output_dir "baselines/who&when/causal/outputs"
+
+# W2+CG (N+1 calls per trace; ARC hourly cap will dominate ~2-3 hr real-time)
+python "baselines/who&when/causal/run_who_and_when_with_graph_api_arc.py" \
+    --variant w2 --corr_threshold 0.5 \
+    --output_dir "baselines/who&when/causal/outputs"
+```
+
+These three runs produce:
+```
+gpt-oss-120b-yesno-who_and_when_w1_graph_inject_corr0.5/
+gpt-oss-120b-yesno-who_and_when_w1_graph_corr0.5/
+gpt-oss-120b-yesno-who_and_when_w2_graph_corr0.5/
+```
+
+Scoring after each run completes:
+```bash
+python eval/calculate_scores_yesno.py \
+    --pred_dir "baselines/who&when/causal/outputs/gpt-oss-120b-yesno-who_and_when_w1_graph_inject_corr0.5"
+# (and analogously for the other two)
+```
+
 ### Expected output dirs (in `baselines/who&when/causal/outputs/`)
 
 ```
@@ -135,16 +201,19 @@ mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w1_graph_inject
 openai-gpt-oss-20b-yesno-who_and_when_w1_graph_inject_corr0.5/
 google-gemma-3-27b-it-yesno-who_and_when_w1_graph_inject_corr0.5/
 qwq-32b-yesno-who_and_when_w1_graph_inject_corr0.5-thinking/
+gpt-oss-120b-yesno-who_and_when_w1_graph_inject_corr0.5/                  # ARC
 # W1+CG
 mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w1_graph_corr0.5/
 openai-gpt-oss-20b-yesno-who_and_when_w1_graph_corr0.5/
 google-gemma-3-27b-it-yesno-who_and_when_w1_graph_corr0.5/
 qwq-32b-yesno-who_and_when_w1_graph_corr0.5-thinking/
+gpt-oss-120b-yesno-who_and_when_w1_graph_corr0.5/                         # ARC
 # W2+CG
 mistralai-Mistral-Small-3.1-24B-Instruct-2503-yesno-who_and_when_w2_graph_corr0.5/
 openai-gpt-oss-20b-yesno-who_and_when_w2_graph_corr0.5/
 google-gemma-3-27b-it-yesno-who_and_when_w2_graph_corr0.5/
 qwq-32b-yesno-who_and_when_w2_graph_corr0.5-thinking/
+gpt-oss-120b-yesno-who_and_when_w2_graph_corr0.5/                         # ARC
 ```
 
 ### Alternative: footnote instead of rerun (0 runs)

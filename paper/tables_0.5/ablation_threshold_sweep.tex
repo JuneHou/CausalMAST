@@ -1,0 +1,97 @@
+% ============================================================
+% TABLE 3 — Ablation: Graph-Richness Threshold Sweep on MAST
+%
+% Sweeps the injected causal graph from a null-graph control through
+% the intervention-validated anchor up to three observationally
+% screened super-graphs, all evaluated under the two-pass dynamic
+% injector (+GI). Matches the TRAIL ablation
+% (trail-benchmark/paper/ablation_graph_richness.tex) in variant order,
+% scoring score, and table layout.
+%
+% Sources (N=393 AG2 traces per cell):
+%   causal-only +GI : outputs_full/<model>-yesno-graph-inject-codename-causal_only-metrics.json
+%                     (QwQ: outputs_think/QwQ-32B-yesno-graph-inject-codename-causal_only-thinking-metrics.json)
+%                     -- numbers also drawn from paper/tables/main_results.tex
+%   random-11   +GI : outputs_thres/t_random11_seed42/<model>-yesno-graph-inject-codename-random11_seed42-metrics.json
+%   corr>=0.60  +GI : outputs_thres/t0.6/<model>-yesno-graph-inject-codename-corr0.6-metrics.json
+%   corr>=0.50  +GI : outputs_thres/t0.5/<model>-yesno-graph-inject-codename-corr0.5-metrics.json
+%   corr>=0.40  +GI : outputs_thres/t0.4/<model>-yesno-graph-inject-codename-corr0.4-metrics.json
+%
+% Edge sets (from causal_graph/outputs/{suppes_graph.json, interventions/effect_edges.json}):
+%   random-11   : 11 random directed edges (seed 42), excluding all Suppes pairs
+%   causal-only : 11 intervention-validated CAPRI-BIC edges
+%   corr >=0.60 : 18 edges = causal-only union with Suppes geomean >= 0.60
+%   corr >=0.50 : 25 edges
+%   corr >=0.40 : 29 edges
+%
+% Geomean score: sqrt(precedence(A,B) * Delta_PR(A,B)) on Suppes-screened
+% candidates; the union with causal-only guarantees no main-result edge
+% is dropped by the threshold filter.
+%
+% Scope: 5-model open-source panel. Closed-source GPT-4o excluded.
+% ============================================================
+
+\begin{table}[t]
+  \centering
+  \small
+  \setlength{\tabcolsep}{6pt}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{l l rr}
+  \toprule
+  \textbf{Model} & \textbf{Graph Variant (\#edges)} & \textbf{W-F1} & \textbf{Macro-F1} \\
+  \midrule
+  \multirow{5}{*}{Mistral-Small-3.1-24B}
+    & random-11        (11) & 36.88              & 25.92              \\
+    & causal-only      (11) & 37.01              & 25.86              \\
+    & corr~$\geq$~0.60 (18) & 36.95              & 25.97              \\
+    & corr~$\geq$~0.50 (25) & \textbf{38.29}     & \textbf{26.97}     \\
+    & corr~$\geq$~0.40 (29) & \underline{37.40}  & \underline{26.30}     \\[3pt]
+  \multirow{5}{*}{GPT-oss-120B}
+    & random-11        (11) & 25.15              & 18.72              \\
+    & causal-only      (11) & 25.26              & 18.50              \\
+    & corr~$\geq$~0.60 (18) & 24.72              & 18.18              \\
+    & corr~$\geq$~0.50 (25) & 27.21              & 19.63              \\
+    & corr~$\geq$~0.40 (29) & 27.95              & 20.55              \\[3pt]
+  \multirow{5}{*}{GPT-oss-20B}
+    & random-11        (11) & 21.05              & 16.33              \\
+    & causal-only      (11) & 21.68              & 16.04              \\
+    & corr~$\geq$~0.60 (18) & 20.35              & 15.29              \\
+    & corr~$\geq$~0.50 (25) & 22.34              & 15.94              \\
+    & corr~$\geq$~0.40 (29) & 20.76              & 14.66              \\[3pt]
+  \multirow{5}{*}{Gemma-3-27B-IT}
+    & random-11        (11) & 16.95              & 13.11              \\
+    & causal-only      (11) & 20.25              & 14.02              \\
+    & corr~$\geq$~0.60 (18) & 19.39              & 13.54              \\
+    & corr~$\geq$~0.50 (25) & 21.17              & 14.56              \\
+    & corr~$\geq$~0.40 (29) & 20.52              & 13.70              \\[3pt]
+  \multirow{5}{*}{QwQ-32B$^{*}$}
+    & random-11        (11) & 16.08              & 12.69              \\
+    & causal-only      (11) & 13.69              &  9.80              \\
+    & corr~$\geq$~0.60 (18) & 15.57              & 11.43              \\
+    & corr~$\geq$~0.50 (25) & 15.61              & 11.47              \\
+    & corr~$\geq$~0.40 (29) & 16.01              & 11.75              \\
+  \bottomrule
+  \end{tabular}
+  \caption{%
+    Ablation: graph-richness sweep on MAST ($N{=}393$ AG2 traces, all
+    metrics in \%) under the two-pass dynamic injector (+GI).
+    \textbf{random-11}: 11 directed edges sampled uniformly (seed $42$)
+    from the 13-category MAST taxonomy excluding all Suppes-screened
+    pairs; null-graph control matched in edge count to causal-only.
+    \textbf{causal-only}: the 11 intervention-validated CAPRI-BIC edges
+    used in the main-results table (Table~\ref{tab:mast_main_results}),
+    the inductive-bias anchor.
+    \textbf{corr~${\geq}\tau$}: at each sweep point
+    $\tau\in\{0.60,0.50,0.40\}$, the union of (i) Suppes-screened edges
+    with geomean
+    $\sqrt{P(A\text{ precedes }B\mid\text{both})\cdot\Delta_{\mathrm{PR}}(A\!\to\!B)}\geq\tau$
+    and (ii) the 11 intervention-validated causal edges (kept regardless
+    of geomean), giving union sizes $\{18,25,29\}$.
+    \textbf{Bold}: best result in each column;
+    \underline{underline}: second-best.
+    Ablation scoped to the open-source panel; closed-source GPT-4o
+    excluded. $^{*}$QwQ-32B uses \texttt{enable\_thinking}.%
+  }
+  \label{tab:mast_ablation_threshold_sweep}
+  \end{table}
+  
