@@ -4,10 +4,13 @@
 corr≥0.50 Suppes-screened super-graph (25 edges). All three MAST tables affected.
 
 **Decision basis**: threshold sweep (Table `ablation_threshold_sweep.tex`) shows
-τ=0.50 has the highest mean W-F1 (24.75) and Macro-F1 (17.58) across the
-5-model open-source panel, beating causal-only and all other τ-points on both
-average metrics. corr≥0.40 wins more individual cells (4/10) but hurts GPT-oss-20B
-and Gemma enough to drag the panel average below τ=0.50.
+τ=0.50 has the highest mean **gain over the causal-only baseline** across the
+5-model open-source panel on both headline metrics (+1.35 W-F1 and +0.87
+Macro-F1; next best τ=0.40 at +0.95 W-F1 and +0.55 Macro-F1; τ=0.60 is
+negative on both at −0.18 W-F1 and −0.42 Macro-F1). Mean raw W-F1 / Macro-F1
+agree with the gain criterion — the selection is robust to either aggregation.
+corr≥0.40 wins more individual cells but hurts GPT-oss-20B and Gemma enough
+to drag the panel-averaged gain below τ=0.50.
 
 **Affected tables** (all in `paper/tables/`):
 1. `main_results_0.5.tex` — NEW; 1 cell pending (GPT-4o). All scripts exist; no sbatch needed (API call).
@@ -236,3 +239,84 @@ If timeline is tight, keep W&W rows at causal-only and add a caption note:
 the W&W rerun based on submission timeline. If GPT-4o at τ=0.50 is clearly
 better than causal-only, the pivot is unambiguous and W&W becomes a
 "nice-to-have" for consistency.
+
+---
+
+# Follow-up — Closed-source cross-benchmark coverage
+
+**Pivot**: in the combined main-results table
+(`/data/wang/junh/githubs/-EMNLP-2026-CASCADE-Causal-Error/tables/main_results_combine.tex`),
+split the merged "Closed-source" row so Gemini and GPT-4o each cover all three benchmark
+columns (TRAIL-GAIA, TRAIL-SWE-Bench, MAST).
+
+This file owns the **MAST-side Gemini** runs. TRAIL-side GPT-4o runs are in
+`/data/wang/junh/githubs/trail-benchmark/TODO_0.35.md` (§6).
+
+**Backend decision**: route Gemini through **OpenRouter** (mirrors the TRAIL pattern in
+`benchmarking/eval/run_eval_graph_inject_router.py`). MAST currently has no
+`*_router.py` runners — two new scripts need to be added.
+
+## 4. New scripts (port from TRAIL) — 2 files ★ prereq
+
+| New file | Adapted from | Purpose |
+|---|---|---|
+| `eval/run_eval_yesno_router.py` | `eval/run_eval_yesno_api.py` (litellm baseline) + TRAIL `run_eval_graph_inject_router.py` (OpenRouter args) | Baseline yes/no eval via OpenRouter |
+| `eval/full_run_eval_graph_inject_router.py` | TRAIL `benchmarking/eval/run_eval_graph_inject_router.py` + MAST `eval/full_run_eval_graph_inject_api.py` (MAST 13-leaf taxonomy, two-pass, no `--span_index`) | +GI eval via OpenRouter |
+
+OpenRouter args to mirror from TRAIL router (lines 299-374 of `run_eval_graph_inject_router.py`):
+- `--openrouter_api_key_env OPENROUTER_API_KEY` (default)
+- `--openrouter_base_url https://openrouter.ai/api/v1`
+- `--temperature 1.0`, `--max_workers 5`, `--default_max_completion_tokens 15000`
+- Strip the `openrouter/` prefix when calling `litellm.token_counter` (TRAIL line 54)
+- Model id format: `openrouter/google/gemini-2.5-flash`, `openrouter/google/gemini-2.5-pro`
+
+## 5. MAST Gemini cells — 4 runs ★ critical
+
+| # | Model | Method | Script |
+|---|---|---|---|
+| 1 | openrouter/google/gemini-2.5-flash | Baseline | `run_eval_yesno_router.py` (new) |
+| 2 | openrouter/google/gemini-2.5-pro   | Baseline | `run_eval_yesno_router.py` (new) |
+| 3 | openrouter/google/gemini-2.5-flash | +GI(τ=0.5) | `full_run_eval_graph_inject_router.py` (new) |
+| 4 | openrouter/google/gemini-2.5-pro   | +GI(τ=0.5) | `full_run_eval_graph_inject_router.py` (new) |
+
+Commands (run from MAST repo root after `export OPENROUTER_API_KEY=...`):
+
+```bash
+# ============================================================
+# Baseline (no graph) — 2 cells
+# ============================================================
+for model in openrouter/google/gemini-2.5-flash openrouter/google/gemini-2.5-pro; do
+  python eval/run_eval_yesno_router.py \
+    --model "$model" --max_workers 5
+done
+
+# ============================================================
+# +GI at τ=0.50 — 2 cells
+# ============================================================
+for model in openrouter/google/gemini-2.5-flash openrouter/google/gemini-2.5-pro; do
+  python eval/full_run_eval_graph_inject_router.py \
+    --model "$model" \
+    --corr_threshold 0.5 \
+    --output_dir outputs_thres/t0.5 \
+    --max_workers 5
+done
+```
+
+Expected output dirs (`<model_tag>` = model with `/` → `-`):
+```
+outputs/openrouter-google-gemini-2.5-{flash,pro}-yesno-baseline/
+outputs_thres/t0.5/openrouter-google-gemini-2.5-{flash,pro}-yesno-graph-inject-codename-corr0.5/
+```
+
+After completion: score with `eval/calculate_scores_yesno.py`, then add Gemini-Flash
+and Gemini-Pro rows to `main_results_mast.tex` and update the closed-source block in
+`main_results_combine.tex` to split into separate Gemini + GPT-4o rows.
+
+## Cross-benchmark total
+
+| Side | Runs | TODO file |
+|---|---|---|
+| TRAIL (GPT-4o) | 4 | `trail-benchmark/TODO_0.35.md` (§6) |
+| MAST (this file, §5) | 4 | `MAST/TODO_0.5.md` |
+| **New scripts** | 2 | `MAST/TODO_0.5.md` (§4) |
+| **Total runs** | **8** | |
