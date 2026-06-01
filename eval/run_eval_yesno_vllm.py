@@ -165,6 +165,9 @@ def main():
                     help="Inference batch size (default: 32)")
     ap.add_argument("--max_tokens", type=int, default=8000,
                     help="Max new tokens per response (default: 2000)")
+    ap.add_argument("--temperature", type=float, default=0.0,
+                    help="Decoding temperature. >0 enables stochastic sampling; "
+                         "re-invoke the script multiple times to collect i.i.d. samples.")
     ap.add_argument("--max_model_len", type=int, default=108000,
                     help="Max context length for the model (default: 8192)")
     ap.add_argument("--gpu_memory_utilization", type=float, default=0.9,
@@ -216,7 +219,7 @@ def main():
         max_model_len=args.max_model_len,
         gpu_memory_utilization=args.gpu_memory_utilization,
     )
-    sampling = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
+    sampling = SamplingParams(temperature=args.temperature, max_tokens=args.max_tokens)
 
     # Build conversation messages for each pending record
     conversations = []
