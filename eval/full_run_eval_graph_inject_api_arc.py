@@ -96,7 +96,7 @@ class RateLimiter:
 # ARC chat call with retry
 # ---------------------------------------------------------------------------
 
-def call_chat(client, model, prompt, max_tokens, limiter, max_retries=5, temperature=0.0):
+def call_chat(client, model, prompt, max_tokens, limiter, max_retries=5, temperature=0.0, seed=0):
     messages = [{"role": "user", "content": prompt}]
     last_err = None
     for attempt in range(max_retries):
@@ -107,6 +107,7 @@ def call_chat(client, model, prompt, max_tokens, limiter, max_retries=5, tempera
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                seed=seed,
             )
             return resp.choices[0].message.content or ""
         except Exception as e:
@@ -132,6 +133,7 @@ def process_record(
     edges: List[Tuple[str, str, float]],
     propagation_threshold: float,
     temperature: float = 0.0,
+    seed: int = 0,
 ) -> Dict[str, int]:
     """Run pass-1 then optionally pass-2 for one record and write the JSON.
 
@@ -150,7 +152,7 @@ def process_record(
     p1_error = None
     try:
         full_p1 = call_chat(client, model, get_pass1_prompt(trace_text),
-                            max_tokens, limiter, temperature=temperature)
+                            max_tokens, limiter, temperature=temperature, seed=seed)
         p1_thinking, p1_raw = strip_thinking(full_p1)
         p1_pred = parse_response(p1_raw)
     except Exception as e:
@@ -176,7 +178,7 @@ def process_record(
         try:
             full_p2 = call_chat(client, model,
                                 get_pass2_prompt(trace_text, detected, filtered_edges),
-                                max_tokens, limiter, temperature=temperature)
+                                max_tokens, limiter, temperature=temperature, seed=seed)
             _, p2_raw = strip_thinking(full_p2)
             p2_pred = parse_pass2_response(p2_raw, target_cats)
         except Exception as e:
@@ -231,6 +233,9 @@ def main():
     ap.add_argument("--temperature", type=float, default=0.0,
                     help="Decoding temperature. >0 enables stochastic sampling; "
                          "re-invoke the script multiple times to collect i.i.d. samples.")
+    ap.add_argument("--seed", type=int, default=0,
+                    help="Per-request sampling seed; pass distinct values across "
+                         "invocations to obtain i.i.d. samples at temperature>0.")
     ap.add_argument("--max_tokens", type=int, default=2000,
                     help="Auto-bumped to 16000 if the model name contains 'thinking'.")
     ap.add_argument("--model_tag", type=str, default=None,
@@ -371,6 +376,7 @@ def main():
         stats = process_record(
             r, out_dir, client, args.model, args.max_tokens, limiter,
             edges, args.propagation_threshold, temperature=args.temperature,
+            seed=args.seed,
         )
         n_triggered += stats["triggered"]
         n_upgraded  += stats["upgraded"]

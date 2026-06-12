@@ -168,6 +168,9 @@ def main():
     ap.add_argument("--temperature", type=float, default=0.0,
                     help="Decoding temperature. >0 enables stochastic sampling; "
                          "re-invoke the script multiple times to collect i.i.d. samples.")
+    ap.add_argument("--seed", type=int, default=0,
+                    help="Per-request sampling seed; pass distinct values across "
+                         "invocations to obtain i.i.d. samples at temperature>0.")
     ap.add_argument("--max_model_len", type=int, default=108000,
                     help="Max context length for the model (default: 8192)")
     ap.add_argument("--gpu_memory_utilization", type=float, default=0.9,
@@ -219,7 +222,7 @@ def main():
         max_model_len=args.max_model_len,
         gpu_memory_utilization=args.gpu_memory_utilization,
     )
-    sampling = SamplingParams(temperature=args.temperature, max_tokens=args.max_tokens)
+    sampling = SamplingParams(temperature=args.temperature, max_tokens=args.max_tokens, seed=args.seed)
 
     # Build conversation messages for each pending record
     conversations = []

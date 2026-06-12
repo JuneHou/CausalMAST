@@ -156,7 +156,7 @@ def parse_response(response: str) -> dict:
 # Per-record API call
 # ---------------------------------------------------------------------------
 
-def call_llm(prompt: str, model: str, temperature: float = 0.0) -> str:
+def call_llm(prompt: str, model: str, temperature: float = 0.0, seed: int = 0) -> str:
     messages = [{"role": "user", "content": prompt}]
     is_reasoning = any(x in model for x in ("o1", "o3", "o4", "anthropic", "gemini-2.5"))
     if is_reasoning:
@@ -168,6 +168,7 @@ def call_llm(prompt: str, model: str, temperature: float = 0.0) -> str:
         params = {
             "messages": messages, "model": model,
             "temperature": temperature, "top_p": 1,
+            "seed": seed,
             "max_completion_tokens": 2000,
             "reasoning_effort": None, "drop_params": True,
         }
@@ -183,7 +184,7 @@ def call_llm(prompt: str, model: str, temperature: float = 0.0) -> str:
     raise RateLimitError("Exceeded 5 retries due to rate limiting")
 
 
-def process_record(r: dict, output_dir: str, model: str, temperature: float = 0.0) -> None:
+def process_record(r: dict, output_dir: str, model: str, temperature: float = 0.0, seed: int = 0) -> None:
     rec_id = r["_rec_id"]
     output_file = os.path.join(output_dir, f"{rec_id}.json")
     if os.path.exists(output_file):
@@ -193,7 +194,7 @@ def process_record(r: dict, output_dir: str, model: str, temperature: float = 0.
     prompt = get_prompt(trace_text)
     raw_response = ""
     try:
-        raw_response = call_llm(prompt, model, temperature=temperature)
+        raw_response = call_llm(prompt, model, temperature=temperature, seed=seed)
         predictions = parse_response(raw_response)
     except ContextWindowExceededError:
         predictions = {m: 0 for m in MAST_MODES}
@@ -228,6 +229,9 @@ def main():
     ap.add_argument("--temperature", type=float, default=0.0,
                     help="Decoding temperature. >0 enables stochastic sampling; "
                          "re-invoke the script multiple times to collect i.i.d. samples.")
+    ap.add_argument("--seed", type=int, default=0,
+                    help="Per-request sampling seed; pass distinct values across "
+                         "invocations to obtain i.i.d. samples at temperature>0.")
     ap.add_argument("--sample_indices", type=str, default=None,
                     help="Path to o1_sample_indices.json to run on a subset of traces")
     ap.add_argument("--model_tag", type=str, default=None,
@@ -262,7 +266,7 @@ def main():
 
     with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
         futures = [
-            executor.submit(process_record, r, out_dir, args.model, args.temperature)
+            executor.submit(process_record, r, out_dir, args.model, args.temperature, args.seed)
             for r in pending
         ]
         for _ in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
